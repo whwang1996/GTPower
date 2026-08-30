@@ -1,8 +1,8 @@
-# OpenTimeBasedPower
+# GTPower
 
 ### GPU-Accelerated Gate-Level Time-Based Power Analysis
 
-**OpenTimeBasedPower** is an open-source GPU-accelerated gate-level time-based power analysis tool built on top of [OpenSTA](https://github.com/parallaxsw/OpenSTA).
+**GTPower** is an open-source GPU-accelerated gate-level time-based power analysis tool built on top of [OpenSTA](https://github.com/parallaxsw/OpenSTA).
 
 This repository provides the source code for the following paper:
 
@@ -27,7 +27,7 @@ This repository provides the source code for the following paper:
 ## Repository Structure
 
 ```text
-OpenTimeBasedPower/
+GTPower/
 ├── app/                    # Executable entry point
 ├── power/                  # Power-analysis implementation
 │   ├── TimeBasedPower.cc   # CPU time-based power analysis
@@ -286,10 +286,10 @@ The current build configuration still requires CUDA and the FSDB reader SDK when
 
 ## Citation
 
-If you use OpenTimeBasedPower in your research, please cite:
+If you use GTPower in your research, please cite:
 
 ```bibtex
-@article{wangOpenTimeBasedPower,
+@article{wangGTPower,
   author  = {Weihao Wang and Yikang Ouyang and Hongyuan Liu and Yuzhe Ma},
   title   = {{GPU-Accelerated Gate-Level Time-Based Power Analysis via Event-Density-Aware Partitioning and Kernel Fusion}},
   journal = {ACM Transactions on Architecture and Code Optimization},
@@ -301,12 +301,12 @@ The publication year, volume, issue, page numbers, and DOI can be added once the
 
 ## Acknowledgments
 
-OpenTimeBasedPower is derived from [OpenSTA](https://github.com/parallaxsw/OpenSTA), developed by Parallax Software.
+GTPower is derived from [OpenSTA](https://github.com/parallaxsw/OpenSTA), developed by Parallax Software.
 
 The original OpenSTA copyright and license notices are retained in the source tree. Issues related specifically to the GPU time-based power-analysis extensions should be reported in this repository. General OpenSTA questions should be directed to the upstream project.
 
 ## License
 
-OpenTimeBasedPower is distributed under the GNU General Public License version 3. See [LICENSE](LICENSE) for details.
+GTPower is distributed under the GNU General Public License version 3. See [LICENSE](LICENSE) for details.
 
 OpenSTA and third-party datasets, timing libraries, waveform files, FSDB reader libraries, and commercial tools may have their own copyright or redistribution conditions. Users are responsible for complying with all applicable licenses.
