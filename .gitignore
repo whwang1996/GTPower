@@ -1,0 +1,32 @@
+*.rej
+*.orig
+TAGS
+*~
+\#*#
+.#*
+.~lock.*\.*#
+.DS_Store
+.vscode
+.idea
+Makefile
+gmon.out
+
+cmake-build-debug
+build
+pvt
+
+include/sta/StaConfig.hh
+
+app/sta
+app/libOpenSTA.*
+app/libCUDA_POWER_ANALYSIS.*
+app/sta.exe
+app/sta.dSYM
+
+# iverilog turd
+examples/gcd_tb
+
+doc/._Sta.docx
+
+# Codex VS Code plugin may create an empty .codex file
+/.codex

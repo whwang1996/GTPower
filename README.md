@@ -13,7 +13,7 @@ This repository provides the source code for the following paper:
 ## Key Features
 
 - GPU-accelerated gate-level time-based power analysis.
-- Waveform-driven analysis using VCD, compressed VCD, or FSDB activity data.
+- Waveform-driven analysis using VCD and compressed VCD activity data, with optional FSDB support.
 - Internal, switching, leakage, and glitch power calculation.
 - Aggregate, per-cell, and per-cycle power results.
 - Event-density-aware CUDA workload partitioning.
@@ -36,8 +36,6 @@ GTPower/
 │   ├── FsdbReader.cc
 │   └── cuda/               # CUDA power-analysis kernels
 ├── util/cuda/              # Shared CUDA utilities
-├── postprocess/            # Result-processing utilities
-├── run_experiment/         # Experiment automation scripts
 ├── test/OpenSTA-sample/    # Small VCD-based example
 ├── examples/               # OpenSTA examples
 └── CMakeLists.txt
@@ -56,7 +54,7 @@ A power-analysis run typically requires the following design files:
 - Switching-activity waveform:
   - VCD (`.vcd`)
   - Compressed VCD (`.vcd.gz`)
-  - FSDB (`.fsdb`)
+  - FSDB (`.fsdb`, requires FSDB support enabled at build time)
 
 The activity-file parser is selected automatically from the filename extension.
 
@@ -75,33 +73,39 @@ The current build flow targets Linux and requires:
 - Eigen3
 - CUDD
 - zlib
-- An FSDB reader SDK providing:
-  - `ffrAPI.h`
-  - `libnffr`
-  - `libnsys`
+
+The experiments reported in the paper used GCC 11.4.0 to compile the C++ code and NVCC 12.4 to compile the CUDA code.
+
+### Optional FSDB support
+
+FSDB support is disabled by default. To enable it, set `FSDB_READER_DIR` during CMake configuration to the FSDB Reader directory provided by your local Verdi installation, then build GTPower. The directory must contain `ffrAPI.h`, with the `nffr` and `nsys` libraries in its `linux64/` subdirectory. Configuration fails if the supplied directory is missing the header or either library.
+
+GTPower uses the reader libraries for multithreaded FSDB reading, with the thread count controlled by `-multi_thread_number`. Builds without FSDB support accept VCD and compressed VCD activity files and do not require Verdi or its reader SDK. Reading an FSDB file with such a build produces an error explaining how to enable support.
 
 The FSDB reader SDK is not included in this repository and may be subject to separate licensing terms.
 
-The current CMake configuration links the FSDB reader libraries unconditionally. Therefore, the FSDB reader SDK is currently required at build time even when only VCD input is used.
-
 ## Building
 
-From the repository root, configure the project with:
+From the repository root, configure a new build directory without FSDB support:
+
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCUDD_DIR=/path/to/cudd
+```
+
+Alternatively, enable FSDB support by supplying your Verdi FSDB Reader directory:
 
 ```bash
 cmake -S . -B build \
   -DCMAKE_BUILD_TYPE=Release \
   -DCUDD_DIR=/path/to/cudd \
-  -DFSDB_READER_DIR=/path/to/fsdb-reader
+  -DFSDB_READER_DIR=/path/to/verdi/share/FsdbReader
 ```
 
-`FSDB_READER_DIR` is expected to contain `ffrAPI.h`, with the corresponding libraries under:
+Replace the placeholder paths with your actual installation paths. `FSDB_READER_DIR` is cached by CMake: to disable FSDB in an existing build directory, reconfigure with `-DFSDB_READER_DIR=`. Omitting the argument preserves any previously cached path. Rebuild after changing this setting.
 
-```text
-/path/to/fsdb-reader/linux64/
-```
-
-Build the project:
+After either configuration, build the project:
 
 ```bash
 cmake --build build --parallel
@@ -169,7 +173,7 @@ read_power_activities \
 report_power
 ```
 
-Although the command-line flag is named `-vcd`, the implementation accepts `.vcd`, `.vcd.gz`, and `.fsdb` files. The corresponding activity reader is selected from the filename extension.
+Although the command-line flag is named `-vcd`, the implementation accepts `.vcd`, `.vcd.gz`, and, when FSDB support is enabled at build time, `.fsdb` files. The corresponding activity reader is selected from the filename extension.
 
 ## Output Files
 
@@ -260,29 +264,31 @@ cd test/OpenSTA-sample
 
 `-multi_thread_number` controls the number of host threads used by the CPU implementation and activity-processing stages.
 
-The current build configuration still requires CUDA and the FSDB reader SDK when building the CPU implementation.
+The current build configuration still requires CUDA when building the CPU implementation. The FSDB reader SDK is required only when FSDB support is enabled; this setting applies to both CPU and CUDA power-analysis runs.
 
 ## Important Command-Line Options
 
-| Option | Description |
-|---|---|
-| `-result_dir <path>` | Directory used for generated result files |
-| `-cuda_device_id <id>` | CUDA device selected for power analysis |
-| `-cuda_thread_partition_basis cycle\|event` | CUDA workload-partitioning strategy |
-| `-n_cycle_per_thread <N>` | Static number of cycles assigned to each CUDA thread |
-| `-n_event_per_thread_for_all_pins <N>` | Event-based thread-work configuration |
-| `-n_cycle_auto_selection_e_target <N>` | Target event count used by event-density-aware partitioning |
-| `-n_cycle_auto_selection_parallelism_floor <N>` | Minimum parallelism target for sparse workloads |
-| `-bsim_pin_threshold <N>` | Pin-count threshold for state-indexed power lookup |
-| `-max_event_num <N>` | Event budget used for memory-bounded activity processing |
-| `-multi_thread_number <N>` | Number of CPU worker threads |
-| `-disable_cuda_power_analysis` | Run the multi-threaded CPU implementation |
-| `-disable_n_cycle_auto_selection` | Disable event-density-aware cycle selection |
-| `-disable_fusion` | Use separate dynamic and leakage CUDA kernels |
-| `-force_zero_slew` | Force zero slew for controlled evaluation |
-| `-report_vcd_stat` | Report switching-activity statistics |
-| `-report_circuit_stat` | Report circuit and gate statistics |
-| `-report_cuda_power_thread_alloc_stat` | Report CUDA thread-allocation statistics |
+All options marked **Required** must be supplied for both CPU and CUDA power-analysis runs, including the GPU-related options when running the CPU implementation. The program exits if any required option is omitted.
+
+| Option | Requirement | Description |
+|---|---|---|
+| `-result_dir <path>` | Optional | Directory used for generated result files (default: `./res`) |
+| `-cuda_device_id <id>` | Required | CUDA device selected for power analysis |
+| `-cuda_thread_partition_basis cycle\|event` | Required | CUDA workload-partitioning strategy |
+| `-n_cycle_per_thread <N>` | Required | Static number of cycles assigned to each CUDA thread |
+| `-n_event_per_thread_for_all_pins <N>` | Required | Event-based thread-work configuration |
+| `-n_cycle_auto_selection_e_target <N>` | Required | Target event count used by event-density-aware partitioning |
+| `-n_cycle_auto_selection_parallelism_floor <N>` | Required | Minimum parallelism target for sparse workloads |
+| `-bsim_pin_threshold <N>` | Required | Pin-count threshold for state-indexed power lookup |
+| `-max_event_num <N>` | Required | Event budget used for memory-bounded activity processing |
+| `-multi_thread_number <N>` | Required | Number of CPU worker threads |
+| `-disable_cuda_power_analysis` | Optional | Run the multi-threaded CPU implementation |
+| `-disable_n_cycle_auto_selection` | Optional | Disable event-density-aware cycle selection |
+| `-disable_fusion` | Optional | Use separate dynamic and leakage CUDA kernels |
+| `-force_zero_slew` | Optional | Force zero slew for controlled evaluation |
+| `-report_vcd_stat` | Optional | Report switching-activity statistics |
+| `-report_circuit_stat` | Optional | Report circuit and gate statistics |
+| `-report_cuda_power_thread_alloc_stat` | Optional | Report CUDA thread-allocation statistics |
 
 ## Citation
 
@@ -308,5 +314,7 @@ The original OpenSTA copyright and license notices are retained in the source tr
 ## License
 
 GTPower is distributed under the GNU General Public License version 3. See [LICENSE](LICENSE) for details.
+
+Third-party components retain their respective licenses. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for copyright notices and full license texts.
 
 OpenSTA and third-party datasets, timing libraries, waveform files, FSDB reader libraries, and commercial tools may have their own copyright or redistribution conditions. Users are responsible for complying with all applicable licenses.

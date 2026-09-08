@@ -1,0 +1,9 @@
+#pragma once
+
+#define INVALID_DEVICE_ID -2
+#define INVALID_N_STATE (1 << 30)
+#define INVALID_VCD_EVENT_VAL -1
+#define INVALID_PIN_IDX -1
+#define INVALID_WAVEFORM_PTR -1
+#define INVALID_PULSE_WIDTH -1
+#define INVALID_N_TOGGLE_VAL -1
