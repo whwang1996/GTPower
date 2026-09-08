@@ -105,6 +105,8 @@ cmake -S . -B build \
 
 Replace the placeholder paths with your actual installation paths. `FSDB_READER_DIR` is cached by CMake: to disable FSDB in an existing build directory, reconfigure with `-DFSDB_READER_DIR=`. Omitting the argument preserves any previously cached path. Rebuild after changing this setting.
 
+By default, new builds target the local GPU (`native`). To select an architecture explicitly, add `-DCMAKE_CUDA_ARCHITECTURES=86` to the configuration command, replacing `86` with your target architecture. Existing cached architecture settings are preserved.
+
 After either configuration, build the project:
 
 ```bash
@@ -140,16 +142,16 @@ cd test/OpenSTA-sample
 
 ../../app/sta \
   -exit \
+  -max_event_num 1000000 \
   -result_dir ./res \
+  -multi_thread_number 4 \
+  -cuda_device_id 0 \
   -cuda_thread_partition_basis cycle \
-  -n_event_per_thread_for_all_pins 64 \
   -n_cycle_per_thread 1 \
+  -n_event_per_thread_for_all_pins 64 \
   -n_cycle_auto_selection_e_target 8 \
   -n_cycle_auto_selection_parallelism_floor 512 \
   -bsim_pin_threshold 16 \
-  -max_event_num 1000000 \
-  -multi_thread_number 4 \
-  -cuda_device_id 0 \
   ./power_vcd.tcl \
   > ./res/run.log 2>&1
 ```
@@ -247,17 +249,17 @@ cd test/OpenSTA-sample
 
 ../../app/sta \
   -exit \
-  -disable_cuda_power_analysis \
+  -max_event_num 1000000 \
   -result_dir ./res-cpu \
+  -disable_cuda_power_analysis \
+  -multi_thread_number 4 \
+  -cuda_device_id 0 \
   -cuda_thread_partition_basis cycle \
-  -n_event_per_thread_for_all_pins 64 \
   -n_cycle_per_thread 1 \
+  -n_event_per_thread_for_all_pins 64 \
   -n_cycle_auto_selection_e_target 8 \
   -n_cycle_auto_selection_parallelism_floor 512 \
   -bsim_pin_threshold 16 \
-  -max_event_num 1000000 \
-  -multi_thread_number 4 \
-  -cuda_device_id 0 \
   ./power_vcd.tcl \
   > ./res-cpu/run.log 2>&1
 ```
@@ -268,26 +270,25 @@ The current build configuration still requires CUDA when building the CPU implem
 
 ## Important Command-Line Options
 
-All options marked **Required** must be supplied for both CPU and CUDA power-analysis runs, including the GPU-related options when running the CPU implementation. The program exits if any required option is omitted.
+Among the options below, only `-max_event_num` is required for both CPU and CUDA power-analysis runs. All other options are optional and use their defaults when omitted. The examples above explicitly set some optional values; see the table below for the defaults.
 
 | Option | Requirement | Description |
 |---|---|---|
-| `-result_dir <path>` | Optional | Directory used for generated result files (default: `./res`) |
-| `-cuda_device_id <id>` | Required | CUDA device selected for power analysis |
-| `-cuda_thread_partition_basis cycle\|event` | Required | CUDA workload-partitioning strategy |
-| `-n_cycle_per_thread <N>` | Required | Static number of cycles assigned to each CUDA thread |
-| `-n_event_per_thread_for_all_pins <N>` | Required | Event-based thread-work configuration |
-| `-n_cycle_auto_selection_e_target <N>` | Required | Target event count used by event-density-aware partitioning |
-| `-n_cycle_auto_selection_parallelism_floor <N>` | Required | Minimum parallelism target for sparse workloads |
-| `-bsim_pin_threshold <N>` | Required | Pin-count threshold for state-indexed power lookup |
 | `-max_event_num <N>` | Required | Event budget used for memory-bounded activity processing |
-| `-multi_thread_number <N>` | Required | Number of CPU worker threads |
+| `-result_dir <path>` | Optional | Directory used for generated result files (default: `./res`) |
 | `-disable_cuda_power_analysis` | Optional | Run the multi-threaded CPU implementation |
+| `-multi_thread_number <N>` | Optional | Number of CPU worker threads (default: `16`) |
+| `-cuda_device_id <id>` | Optional | CUDA device selected for power analysis (default: last visible GPU) |
+| `-cuda_thread_partition_basis cycle\|event` | Optional | CUDA workload-partitioning strategy (default: `cycle`) |
+| `-n_cycle_per_thread <N>` | Optional | Static number of cycles assigned to each CUDA thread (default: `8`) |
+| `-n_event_per_thread_for_all_pins <N>` | Optional | Event-based thread-work configuration (default: `32`) |
 | `-disable_n_cycle_auto_selection` | Optional | Disable event-density-aware cycle selection |
+| `-n_cycle_auto_selection_e_target <N>` | Optional | Target event count used by event-density-aware partitioning (default: `8`) |
+| `-n_cycle_auto_selection_parallelism_floor <N>` | Optional | Minimum parallelism target for sparse workloads (default: `512`) |
+| `-bsim_pin_threshold <N>` | Optional | Pin-count threshold for state-indexed power lookup (default: `16`) |
 | `-disable_fusion` | Optional | Use separate dynamic and leakage CUDA kernels |
-| `-force_zero_slew` | Optional | Force zero slew for controlled evaluation |
-| `-report_vcd_stat` | Optional | Report switching-activity statistics |
 | `-report_circuit_stat` | Optional | Report circuit and gate statistics |
+| `-report_vcd_stat` | Optional | Report switching-activity statistics |
 | `-report_cuda_power_thread_alloc_stat` | Optional | Report CUDA thread-allocation statistics |
 
 ## Citation

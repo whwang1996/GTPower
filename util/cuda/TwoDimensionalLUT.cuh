@@ -185,44 +185,6 @@ public:
     }
   }
 
-  __host__ __device__ void testLookUp() {
-    idx2_dim_ = idx1_dim_ = 5;
-    idx1_input_transitions_ = new SlewVal[5];
-    idx1_input_transitions_[0] = 0.05;
-    idx1_input_transitions_[1] = 0.1;
-    idx1_input_transitions_[2] = 0.3;
-    idx1_input_transitions_[3] = 0.4;
-    idx1_input_transitions_[4] = 0.5;
-    idx2_output_capacitances_ = new CapacitanceVal[5];
-    idx2_output_capacitances_[0] = 0.20;
-    idx2_output_capacitances_[1] = 0.35;
-    idx2_output_capacitances_[2] = 1.43;
-    idx2_output_capacitances_[3] = 1.5;
-    idx2_output_capacitances_[4] = 2.0;
-    lookup_table_ = new EnergyVal[25] {
-      0.05, 0.18, 0.7, 0.8, 1.1,
-      0.1, 0.1937, 0.7280, 0.9, 1.3,
-      0.15, 0.2327, 0.7676, 0.95, 1.35,
-      0.2, 0.25, 0.8, 1.0, 1.4,
-      0.25, 0.3, 0.9, 1.1, 1.5
-    };
-
-    // ---interpolation---
-    auto transition_time1 = lookUpValue(0.15, 1.16); // 0.6043
-    auto transition_time2 = lookUpValue(0.05, 1.5); // 0.8
-    auto transition_time3 = lookUpValue(0.05, 1.75); // 0.95
-    // ---interpolation---
-    // ---extrapolation---
-    auto transition_time4 = lookUpValue(0.05, 2.5); // 1.4
-    auto transition_time5 = lookUpValue(0.6, 2.0); // 1.6
-    auto transition_time6 = lookUpValue(0.04, 0.2); // 0.04
-    auto transition_time7 = lookUpValue(0.6, 2.5); // 2.0
-    // ---extrapolation---
-
-    printf("transition_time1: %f, transition_time2: %f, transition_time3: %f, transition_time4: %f, transition_time5: %f, transition_time6: %f, transition_time7: %f\n", 
-      transition_time1, transition_time2, transition_time3, transition_time4, transition_time5, transition_time6, transition_time7);
-  }
-
   ~TwoDimensionalLUT() {
     if (device_allocation_) {
       cudaFree(device_allocation_);

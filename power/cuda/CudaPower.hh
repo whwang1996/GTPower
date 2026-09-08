@@ -162,7 +162,6 @@ protected:
   void setPeriodAndInitPerCyclePower(VcdEventTime _max_event_time, EventTimeVal _vcd_time_scale);
   void scheduleKernel(VcdEventTime interval_start_time, VcdEventTime interval_end_time);
   void scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_start_time, VcdEventTime interval_end_time);
-  void prefetchManagedMemoryForEachRound(int dst_device, bool prefetch_gates);
   void runCudaPowerAnalysis(VcdEventTime interval_start_time, VcdEventTime interval_end_time, const std::pair<VcdEventTime, VcdEventTime>* next_interval = nullptr);
   template <class Kernel>
   void logKernelResourceUsage(const char* kernel_name, Kernel* kernel, NBlockVal grid_block_count, int block_thread_count) const;
@@ -205,17 +204,6 @@ private:
   NBlockVal n_block_for_event_partition_;
   NBlockVal n_block_for_cycle_partition_;
 
-  // -----auxiliary arrays-----
-  // NEeventVal* global_pin_start_event_idxes_;
-  // NEeventVal* global_pin_end_event_idxes_;
-  // NEeventVal* global_pin_frontier_event_idxes_;
-  // VcdEventVal* global_prev_pin_states_;
-  // VcdEventVal* global_pin_states_;
-  // VcdEventVal* global_related_input_prev_pin_states_;
-  // bool* global_cur_time_pin_triggereds_;
-  // NPeriodVal* global_pin_cur_period_idxes_;
-  // NEeventInOnePeriodVal* global_pin_n_event_in_cur_period_;
-  // -----end of auxiliary arrays-----
   // -----auxiliary arrays for gates-----
   NEeventVal* global_pin_waveform_starts_;
   NEeventVal* global_pin_waveform_ends_;

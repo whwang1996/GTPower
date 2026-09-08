@@ -24,6 +24,11 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
 cmake_policy(SET CMP0086 NEW)
 endif()
 
+# Default to the local GPU unless the user specifies CUDA architectures.
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES AND "$ENV{CUDAARCHS}" STREQUAL "")
+  set(CMAKE_CUDA_ARCHITECTURES native CACHE STRING "CUDA architectures to compile for")
+endif()
+
 project(STA VERSION 2.6.0
   LANGUAGES CXX CUDA
 )
@@ -621,7 +626,6 @@ target_compile_features(OpenSTA PUBLIC cxx_std_17)
 # CUDA
 ###########################################################
 add_library(CUDA_POWER_ANALYSIS)
-set_property(TARGET CUDA_POWER_ANALYSIS PROPERTY CUDA_ARCHITECTURES native)
 set_target_properties(CUDA_POWER_ANALYSIS PROPERTIES CUDA_SEPARABLE_COMPILATION ON) 
 target_link_libraries(CUDA_POWER_ANALYSIS PRIVATE OpenMP::OpenMP_CXX)
 target_compile_options(CUDA_POWER_ANALYSIS PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-fopenmp>)
@@ -652,7 +656,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${STA_HOME}/app)
 # on osx something is case insensitive. Using STA for the
 # lib name results in "No rule to make target ../depend.
 add_executable(sta app/Main.cc)
-set_property(TARGET sta PROPERTY CUDA_ARCHITECTURES native)  # require cmake 3.24 https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html
 target_link_libraries(sta
   sta_swig
   OpenSTA

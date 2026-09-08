@@ -62,14 +62,6 @@ public:
   void readActivities();
 
 private:
-  void readSyntheticActivities();
-  size_t setSyntheticActivities(const VcdValues &non_clock_var_values,
-                                float non_clock_activity,
-                                float non_clock_duty,
-                                const VcdValues &clock_var_values,
-                                float clock_activity,
-                                float clock_duty,
-                                size_t &annotated_clock_pin_count);
   void reportWaveformStat();
   void reportIntervalActivityFactor(const char *title,
                                     const char *prefix,
@@ -151,15 +143,6 @@ ReadVcdActivities::readActivities()
   for (Clock *clk : *sta_->sdc()->clocks())
     clk_period_ = min(static_cast<double>(clk->period()), clk_period_);
 
-  if (G_CONFIG.flags.enable_synthetic_high_activity_waveform) {
-    readSyntheticActivities();
-    report_->reportLine("Annotated %zu pin activities.", annotated_pins_.size());
-
-    TIMEREND(READ_ACTIVITIES);
-    DURATION_ms(READ_ACTIVITIES);
-    return;
-  }
-
   if (hasExtension(filename_, ".fsdb")) {
     G_CONFIG.strs.activity_file_format = "fsdb";
   } else if (hasExtension(filename_, ".vcd") || hasExtension(filename_, ".vcd.gz")) {
@@ -202,161 +185,6 @@ ReadVcdActivities::readActivities()
 
   TIMEREND(READ_ACTIVITIES);
   DURATION_ms(READ_ACTIVITIES);
-}
-
-void
-ReadVcdActivities::readSyntheticActivities()
-{
-  G_CONFIG.strs.activity_file_format = "synthetic";
-
-  if (clk_period_ <= 0.0 || clk_period_ == INF) {
-    LOG_WARN << "Synthetic high-activity waveform mode found no valid SDC clock period; using 1.0.";
-    clk_period_ = 1.0;
-  }
-
-  const int n_cycle = std::max(1, G_CONFIG.nums.synthetic_waveform_cycle_count);
-  const int toggles_per_cycle = std::max(1, G_CONFIG.nums.synthetic_waveform_toggles_per_cycle);
-  const VcdTime ticks_per_cycle = std::max(static_cast<VcdTime>(1024),
-                                           static_cast<VcdTime>(toggles_per_cycle + 1));
-  const VcdTime event_step = std::max(static_cast<VcdTime>(1),
-                                      ticks_per_cycle / (toggles_per_cycle + 1));
-  const VcdTime time_max = static_cast<VcdTime>(n_cycle) * ticks_per_cycle;
-  const double synthetic_time_scale = clk_period_ / static_cast<double>(ticks_per_cycle);
-
-  vcd_.setTimeUnit("synthetic", 1.0);
-  vcd_.setTimeScale(synthetic_time_scale);
-  vcd_.setMinDeltaTime(event_step);
-  vcd_.setTimeMax(time_max);
-  vcd_.setTimeIntervals({{0, time_max}});
-
-  string synthetic_name = "__sta_synthetic_high_activity";
-  string synthetic_id = "0";
-  vcd_.makeVar(synthetic_name, VcdVarType::wire, 1, synthetic_id);
-  vcd_.varAppendValue(synthetic_id, 0, '0');
-
-  string clock_name = "__sta_synthetic_clock";
-  string clock_id = "1";
-  vcd_.makeVar(clock_name, VcdVarType::wire, 1, clock_id);
-  vcd_.varAppendValue(clock_id, 0, '0');
-
-  char value = '0';
-  for (int cycle_idx = 0; cycle_idx < n_cycle; ++cycle_idx) {
-    const VcdTime cycle_start = static_cast<VcdTime>(cycle_idx) * ticks_per_cycle;
-    for (int toggle_idx = 0; toggle_idx < toggles_per_cycle; ++toggle_idx) {
-      value = value == '0' ? '1' : '0';
-      const VcdTime time = cycle_start + static_cast<VcdTime>(toggle_idx + 1) * event_step;
-      vcd_.varAppendValue(synthetic_id, time, value);
-    }
-  }
-
-  const VcdTime clock_rise_tick = std::max(static_cast<VcdTime>(1), ticks_per_cycle / 4);
-  const VcdTime clock_fall_tick = std::max(clock_rise_tick + 1, ticks_per_cycle * 3 / 4);
-  for (int cycle_idx = 0; cycle_idx < n_cycle; ++cycle_idx) {
-    const VcdTime cycle_start = static_cast<VcdTime>(cycle_idx) * ticks_per_cycle;
-    vcd_.varAppendValue(clock_id, cycle_start + clock_rise_tick, '1');
-    vcd_.varAppendValue(clock_id, cycle_start + clock_fall_tick, '0');
-  }
-
-  const VcdValues &local_values = vcd_.values(vcd_.vars().at(0));
-  double transition_count = 0.0;
-  double activity = 0.0;
-  double duty = 0.0;
-  findVarActivity(local_values, 0, transition_count, activity, duty);
-  const double synthetic_activity_factor =
-      static_cast<double>(toggles_per_cycle) / 2.0;
-
-  const VcdValues &local_clock_values = vcd_.values(vcd_.vars().at(1));
-  double clock_transition_count = 0.0;
-  double clock_activity = 0.0;
-  double clock_duty = 0.0;
-  findVarActivity(local_clock_values, 0, clock_transition_count, clock_activity, clock_duty);
-
-  power_->vcd() = std::move(vcd_);
-  power_->setClkPeriod(static_cast<PeriodVal>(clk_period_));
-
-  Vcd &power_vcd = power_->vcd();
-  const VcdValues &synthetic_values = power_vcd.values(power_vcd.vars().at(0));
-  const VcdValues &clock_values = power_vcd.values(power_vcd.vars().at(1));
-  size_t annotated_clock_pin_count = 0;
-  const size_t annotated_pin_count = setSyntheticActivities(synthetic_values,
-                                                            static_cast<float>(activity),
-                                                            static_cast<float>(duty),
-                                                            clock_values,
-                                                            static_cast<float>(clock_activity),
-                                                            static_cast<float>(clock_duty),
-                                                            annotated_clock_pin_count);
-  const size_t annotated_non_clock_pin_count = annotated_pin_count - annotated_clock_pin_count;
-  const size_t waveform_event_count = synthetic_values.size();
-  const size_t clock_waveform_event_count = clock_values.size();
-  const size_t annotated_event_count =
-      waveform_event_count * annotated_non_clock_pin_count
-      + clock_waveform_event_count * annotated_clock_pin_count;
-
-  LOG_BEGIN(INFO, "Synthetic high-activity waveform");
-  LOG_INFO << "Synthetic high-activity waveform mode enabled; skipping FSDB/VCD parser.";
-  LOG_INFO << "Synthetic high-activity waveform cycle count: " << n_cycle;
-  LOG_INFO << "Synthetic high-activity waveform toggles per cycle: " << toggles_per_cycle;
-  LOG_INFO << "Synthetic high-activity waveform activity factor (0 -> 1): " << synthetic_activity_factor;
-  LOG_INFO << "Synthetic high-activity waveform annotated non-clock pin count: " << annotated_non_clock_pin_count;
-  LOG_INFO << "Synthetic high-activity waveform annotated clock pin count: " << annotated_clock_pin_count;
-  LOG_INFO << "Synthetic clock waveform activity: " << clock_activity;
-  LOG_INFO << "Synthetic clock waveform duty: " << clock_duty;
-  LOG_INFO << "Synthetic high-activity waveform event count per waveform: " << waveform_event_count;
-  LOG_INFO << "Synthetic clock waveform event count per waveform: " << clock_waveform_event_count;
-  LOG_INFO << "Synthetic high-activity waveform total annotated event count: " << annotated_event_count;
-  LOG_INFO << "Synthetic high-activity waveform total transition count: "
-           << static_cast<size_t>(transition_count) * annotated_non_clock_pin_count;
-  LOG_INFO << "Synthetic clock waveform total transition count: "
-           << static_cast<size_t>(clock_transition_count) * annotated_clock_pin_count;
-  LOG_INFO << "Synthetic high-activity waveform duty: " << duty;
-  LOG_INFO << "Synthetic high-activity waveform time max: " << time_max;
-  LOG_INFO << "Synthetic high-activity waveform time scale: " << synthetic_time_scale;
-  LOG_END(INFO, "Synthetic high-activity waveform");
-}
-
-size_t
-ReadVcdActivities::setSyntheticActivities(const VcdValues &non_clock_var_values,
-                                          float non_clock_activity,
-                                          float non_clock_duty,
-                                          const VcdValues &clock_var_values,
-                                          float clock_activity,
-                                          float clock_duty,
-                                          size_t &annotated_clock_pin_count)
-{
-  annotated_clock_pin_count = 0;
-  LeafInstanceIterator *inst_iter = network_->leafInstanceIterator();
-  while (inst_iter->hasNext()) {
-    const Instance *inst = inst_iter->next();
-    InstancePinIterator *pin_iter = network_->pinIterator(inst);
-    while (pin_iter->hasNext()) {
-      const Pin *pin = pin_iter->next();
-      const LibertyPort *port = network_->libertyPort(pin);
-      const bool is_clock = sdc_->isLeafPinClock(pin)
-          || (port && port->isClock());
-
-      if (is_clock) {
-        power_->setUserActivity(pin,
-                                clock_activity,
-                                clock_duty,
-                                PwrActivityOrigin::vcd,
-                                &clock_var_values,
-                                0);
-        ++annotated_clock_pin_count;
-      }
-      else {
-        power_->setUserActivity(pin,
-                                non_clock_activity,
-                                non_clock_duty,
-                                PwrActivityOrigin::vcd,
-                                &non_clock_var_values,
-                                0);
-      }
-      annotated_pins_.insert(pin);
-    }
-    delete pin_iter;
-  }
-  delete inst_iter;
-  return annotated_pins_.size();
 }
 
 bool

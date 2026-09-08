@@ -217,19 +217,6 @@ struct Gate {
     // }
   }
 
-  // void setOutputPinBlockThreadRange(NBlockVal _output_pin_start_block, NBlockVal _output_pin_end_block, NThreadVal _output_pin_start_thread, NThreadVal _output_pin_end_thread) {
-  //   output_pin_start_block = _output_pin_start_block;
-  //   output_pin_end_block = _output_pin_end_block;
-  //   output_pin_start_thread = _output_pin_start_thread;
-  //   output_pin_end_thread = _output_pin_end_thread;
-  //   CHECK_CUDA_RUNTIME(cudaFree(per_tile_switching_res));
-  //   CHECK_CUDA_RUNTIME(cudaMalloc(&per_tile_switching_res, sizeof(PowerVal) * (output_pin_end_thread - output_pin_start_thread)));
-  //   CHECK_CUDA_RUNTIME(cudaMemset(per_tile_switching_res, 0, sizeof(PowerVal) * (output_pin_end_thread - output_pin_start_thread)));
-  //   CHECK_CUDA_RUNTIME(cudaFree(per_tile_glitch_switching_res));
-  //   CHECK_CUDA_RUNTIME(cudaMalloc(&per_tile_glitch_switching_res, sizeof(PowerVal) * (output_pin_end_thread - output_pin_start_thread)));
-  //   CHECK_CUDA_RUNTIME(cudaMemset(per_tile_glitch_switching_res, 0, sizeof(PowerVal) * (output_pin_end_thread - output_pin_start_thread)));
-  // }
-
   void setAllPinsBlockThreadRange(
     NThreadVal _start_thread_for_event_partition, NThreadVal _end_thread_for_event_partition,
     NBlockVal _start_block_for_event_partition, NBlockVal _end_block_for_event_partition, 
@@ -395,67 +382,9 @@ struct Gate {
     return rise_fall == RISE ? pin_rise_slews[pin_idx] : pin_fall_slews[pin_idx];
   }
 
-  // void prefetchToDevice(int current_device) const {
-    // CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(leakage_powers, sizeof(PowerVal) * n_state, current_device, NULL));
-    // CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(pin_voltages, sizeof(VoltageVal) * n_pin, current_device, NULL));
-    // CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(pin_rise_slews, sizeof(SlewVal) * n_pin, current_device, NULL));
-    // CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(pin_fall_slews, sizeof(SlewVal) * n_pin, current_device, NULL));
-    // CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(pin_load_capacitances, sizeof(CapacitanceVal) * n_pin, current_device, NULL));
-    // CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(pin_waveform_starts, sizeof(NEeventVal) * n_pin, current_device, NULL));
-    // CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(pin_waveform_ends, sizeof(NEeventVal) * n_pin, current_device, NULL));
-  // }
-
   __host__ ~Gate() {  // TODO add free lut pointers
-    // CHECK_CUDA_RUNTIME(cudaFree(leakage_powers));
-    // CHECK_CUDA_RUNTIME(cudaFree(pin_voltages));
-    // CHECK_CUDA_RUNTIME(cudaFree(pin_rise_slews));
-    // CHECK_CUDA_RUNTIME(cudaFree(pin_fall_slews));
-    // CHECK_CUDA_RUNTIME(cudaFree(pin_load_capacitances));
-    // CHECK_CUDA_RUNTIME(cudaFree(pin_waveform_starts));
-    // CHECK_CUDA_RUNTIME(cudaFree(pin_waveform_ends));
-    // CHECK_CUDA_RUNTIME(cudaFree(per_tile_switching_res));
-    // CHECK_CUDA_RUNTIME(cudaFree(per_tile_glitch_switching_res));
-    // CHECK_CUDA_RUNTIME(cudaFree(per_tile_leakage_res));
-    // CHECK_CUDA_RUNTIME(cudaFree(per_tile_internal_res));
-    // CHECK_CUDA_RUNTIME(cudaFree(per_tile_glitch_internal_res));
-
-    // leakage_powers = nullptr;
-    // pin_voltages = nullptr;
-    // pin_rise_slews = nullptr;
-    // pin_fall_slews = nullptr;
-    // pin_load_capacitances = nullptr;
-    // pin_waveform_starts = nullptr;
-    // pin_waveform_ends = nullptr;
-    // per_tile_switching_res = nullptr;
-    // per_tile_glitch_switching_res = nullptr;
-    // per_tile_leakage_res = nullptr;
-    // per_tile_internal_res = nullptr;
-    // per_tile_glitch_internal_res = nullptr;
-
     delete[] pin_waveform_sizes;
     pin_waveform_sizes = nullptr;
-  }
-};
-
-struct SharedMemGate {
-  NPinVal n_pin;
-  NPinVal n_input_pin;
-  NPinVal n_output_pin;
-  NEeventVal *pin_waveform_starts;  // array of start pointer of each pin
-  NEeventVal *pin_waveform_ends;  // array of end pointer of each pin
-  VoltageVal *pin_voltages;
-  SlewVal *pin_rise_slews;
-  SlewVal *pin_fall_slews;
-  CapacitanceVal *pin_load_capacitances;
-
-  explicit SharedMemGate() {}
-
-  __device__ EnergyVal getSingleRiseTransitionEnergy(NPinVal output_pin_idx) const {
-    return pin_load_capacitances[output_pin_idx] * pin_voltages[output_pin_idx] * pin_voltages[output_pin_idx];
-  }
-
-  __device__ SlewVal getPinSlew(NPinVal pin_idx, RISEFALL rise_fall) const {
-    return rise_fall == RISE ? pin_rise_slews[pin_idx] : pin_fall_slews[pin_idx];
   }
 };
 

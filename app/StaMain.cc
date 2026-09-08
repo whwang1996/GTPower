@@ -72,8 +72,6 @@ parseMyPowerArgs(int &argc,
       G_CONFIG.strs.cuda_thread_partition_basis = cuda_thread_partition_basis;
       LOG_INFO << "Setting cuda_thread_partition_basis: " << G_CONFIG.strs.cuda_thread_partition_basis;
     }
-  } else {
-    LOG_ERROR << "No cuda_thread_partition_basis_arg";
   }
   //--------------------------------------------end of cuda_thread_partition_basis--------------------------------------------
 
@@ -86,8 +84,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown n_cycle_per_thread_arg: " << n_cycle_per_thread_arg;
     }
-  } else {
-    LOG_ERROR << "No n_cycle_per_thread_arg";
   }
   //--------------------------------------------end of n_cycle_per_thread--------------------------------------------
 
@@ -100,8 +96,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown n_event_per_thread_for_all_pins_arg: " << n_event_per_thread_for_all_pins_arg;
     }
-  } else {
-    LOG_ERROR << "No n_event_per_thread_for_all_pins_arg";
   }
   //--------------------------------------------end of n_event_per_thread_for_all_pins--------------------------------------------
 
@@ -130,8 +124,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown bsim_pin_threshold_arg: " << bsim_pin_threshold_arg;
     }
-  } else {
-    LOG_ERROR << "No bsim_pin_threshold_arg";
   }
   //--------------------------------------------end of bsim_pin_threshold--------------------------------------------
   
@@ -144,8 +136,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown multi_thread_number_arg: " << multi_thread_number_arg;
     }
-  } else {
-    LOG_ERROR << "No multi_thread_number_arg";
   }
   //--------------------------------------------end of multi_thread_number--------------------------------------------
 
@@ -158,8 +148,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown cuda_device_id_arg: " << cuda_device_id_arg;
     }
-  } else {
-    LOG_ERROR << "No cuda_device_id_arg";
   }
   //--------------------------------------------end of cuda_device_id--------------------------------------------
 
@@ -172,8 +160,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown n_cycle_auto_selection_e_target_arg: " << n_cycle_auto_selection_e_target_arg;
     }
-  } else {
-    LOG_ERROR << "No n_cycle_auto_selection_e_target_arg";
   }
   //--------------------------------------------end of n_cycle_auto_selection_e_target--------------------------------------------
 
@@ -191,8 +177,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown n_cycle_auto_selection_parallelism_floor_arg: " << n_cycle_auto_selection_parallelism_floor_arg;
     }
-  } else {
-    LOG_ERROR << "No n_cycle_auto_selection_parallelism_floor_arg";
   }
   //--------------------------------------------end of n_cycle_auto_selection_parallelism_floor--------------------------------------------
 
@@ -209,50 +193,6 @@ parseMyPowerArgs(int &argc,
     LOG_INFO << "Disable kernel fusion.";
   }
   //--------------------------------------------end of disable fusion--------------------------------------------
-
-  //--------------------------------------------force zero slew--------------------------------------------
-  if (findCmdLineFlag(argc, argv, "-force_zero_slew")) {
-    G_CONFIG.flags.force_zero_slew = true;
-    LOG_INFO << "Force all slews to zero.";
-  }
-  //--------------------------------------------end of force zero slew--------------------------------------------
-
-  //--------------------------------------------synthetic high activity waveform--------------------------------------------
-  if (findCmdLineFlag(argc, argv, "-enable_synthetic_high_activity_waveform")) {
-    G_CONFIG.flags.enable_synthetic_high_activity_waveform = true;
-    LOG_INFO << "Enable synthetic high activity waveform.";
-  }
-
-  char* synthetic_waveform_toggles_per_cycle_arg = findCmdLineKey(argc, argv, "-synthetic_waveform_toggles_per_cycle");
-  if (synthetic_waveform_toggles_per_cycle_arg) {
-    if (isDigits(synthetic_waveform_toggles_per_cycle_arg)) {
-      const int synthetic_waveform_toggles_per_cycle = atoi(synthetic_waveform_toggles_per_cycle_arg);
-      if (synthetic_waveform_toggles_per_cycle > 0) {
-        G_CONFIG.nums.synthetic_waveform_toggles_per_cycle = synthetic_waveform_toggles_per_cycle;
-        LOG_INFO << "Setting synthetic_waveform_toggles_per_cycle: " << G_CONFIG.nums.synthetic_waveform_toggles_per_cycle;
-      } else {
-        LOG_ERROR << "synthetic_waveform_toggles_per_cycle must be greater than 0: " << synthetic_waveform_toggles_per_cycle_arg;
-      }
-    } else {
-      LOG_ERROR << "Unknown synthetic_waveform_toggles_per_cycle_arg: " << synthetic_waveform_toggles_per_cycle_arg;
-    }
-  }
-
-  char* synthetic_waveform_cycle_count_arg = findCmdLineKey(argc, argv, "-synthetic_waveform_cycle_count");
-  if (synthetic_waveform_cycle_count_arg) {
-    if (isDigits(synthetic_waveform_cycle_count_arg)) {
-      const int synthetic_waveform_cycle_count = atoi(synthetic_waveform_cycle_count_arg);
-      if (synthetic_waveform_cycle_count > 0) {
-        G_CONFIG.nums.synthetic_waveform_cycle_count = synthetic_waveform_cycle_count;
-        LOG_INFO << "Setting synthetic_waveform_cycle_count: " << G_CONFIG.nums.synthetic_waveform_cycle_count;
-      } else {
-        LOG_ERROR << "synthetic_waveform_cycle_count must be greater than 0: " << synthetic_waveform_cycle_count_arg;
-      }
-    } else {
-      LOG_ERROR << "Unknown synthetic_waveform_cycle_count_arg: " << synthetic_waveform_cycle_count_arg;
-    }
-  }
-  //--------------------------------------------end of synthetic high activity waveform--------------------------------------------
 
   //--------------------------------------------report vcd stat--------------------------------------------
   if (findCmdLineFlag(argc, argv, "-report_vcd_stat")) {
