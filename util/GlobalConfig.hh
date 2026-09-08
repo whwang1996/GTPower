@@ -30,7 +30,7 @@ class GlobalConfigs : public utils::Singleton<common::GlobalConfigs> {
   };
 
   struct Nums {
-    NEeventVal max_event_num = 1000000000; // 1e9 events for about 10GB memory
+    NEeventVal max_event_num = 400000000; // Event budget per batch; also sets CUDA event buffer capacity.
     int n_event_per_thread_for_all_pins = 32;
     int n_cycle_per_thread = 8;
     const int n_thread_per_block_for_all_pins = 128;
@@ -47,8 +47,6 @@ class GlobalConfigs : public utils::Singleton<common::GlobalConfigs> {
 
   struct Strs {
     std::string activity_file_format = "fsdb";  // fsdb or vcd
-    const std::string leakage_power_separator = " ";
-    const std::string internal_power_separator = "&";
     const std::string power_analysis_res_file_separator = "\t";
     std::string cuda_thread_partition_basis = "cycle";  // IMPORTANT!!! whether partition workload by cycle or event
   };

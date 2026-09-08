@@ -64,12 +64,12 @@ class Logger : public std::stringstream {
 } // end of namespace utils
 
 #define LOG(level) LOG_##level
-#define LOG_INFO utils::Logger("INFO", __FUNCTION__, __FILE__, __LINE__)
-#define LOG_DEBUG utils::Logger("DEBUG", __FUNCTION__, __FILE__, __LINE__)
-#define LOG_WARN utils::Logger("WARN", __FUNCTION__, __FILE__, __LINE__)
-#define LOG_ERROR utils::Logger("ERROR", __FUNCTION__, __FILE__, __LINE__)
+#define LOG_INFO ::utils::Logger("INFO", __FUNCTION__, __FILE__, __LINE__)
+#define LOG_DEBUG ::utils::Logger("DEBUG", __FUNCTION__, __FILE__, __LINE__)
+#define LOG_WARN ::utils::Logger("WARN", __FUNCTION__, __FILE__, __LINE__)
+#define LOG_ERROR ::utils::Logger("ERROR", __FUNCTION__, __FILE__, __LINE__)
 
 #define LOG_BEGIN(level, title) LOG(level) << ">>>>>>> " << title << " >>>>>>>"
 #define LOG_END(level, title) LOG(level) << "<<<<<<< " << title << " <<<<<<<"
 
-#define LOG_DEBUG_FLAG utils::Logger::is_debug
+#define LOG_DEBUG_FLAG ::utils::Logger::is_debug

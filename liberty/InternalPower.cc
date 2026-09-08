@@ -20,7 +20,7 @@
 #include "TableModel.hh"
 #include "Liberty.hh"
 #include "Units.hh"
-#include "GlobalConfig.hh"
+#include "Log.hh"
 
 namespace sta {
 
@@ -77,9 +77,6 @@ InternalPower::InternalPower(LibertyCell *cell,
   port_(port),
   related_port_(related_port),
   when_(attrs->when()),
-  when_str_(),
-  when_states_(),
-  port_names_(),
   related_pg_pin_(attrs->relatedPgPin())
 {
   for (auto tr : RiseFall::range()) {
@@ -87,18 +84,9 @@ InternalPower::InternalPower(LibertyCell *cell,
     models_[tr_index] = attrs->model(tr);
   }
 
-  split(attrs->whenStr(), G_CONFIG.strs.internal_power_separator, when_states_);
-  std::sort(when_states_.begin(), when_states_.end());
-  for (std::string& when_state: when_states_) {
-    trim(when_state);
-  }
-  when_str_ = strJoin(when_states_, G_CONFIG.strs.internal_power_separator);
-  for (const std::string& when_state: when_states_) {
-    if (when_state[0] == '!') {
-      port_names_.emplace_back(when_state.substr(1));
-    } else {
-      port_names_.emplace_back(when_state);
-    }
+  if (!attrs->whenStr().empty() && when_ == nullptr) {
+    LOG_ERROR << "Invalid internal_power when expression for " << cell->name()
+      << "/" << port->name() << ": " << attrs->whenStr();
   }
 
   cell->addInternalPower(this);

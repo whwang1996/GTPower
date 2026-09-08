@@ -219,8 +219,9 @@ public:
     }
   }
 
-  void setWhenState(const std::vector<VcdEventVal>& when_state) {
+  void setWhenState(const std::vector<VcdEventVal>& when_state, bool satisfiable = true) {
     assert(when_state.size() <= MAX_N_PIN);
+    when_satisfiable_ = satisfiable;
     initWhenState();
     for (size_t idx = 0; idx < when_state.size(); ++idx) {
       when_state_[idx] = when_state[idx];
@@ -228,6 +229,9 @@ public:
   }
 
   __device__ bool matchPinStates(const VcdEventVal* pin_states, NPinVal n_pin) {
+    if (!when_satisfiable_) {
+      return false;
+    }
     bool matched = true;
     for (NPinVal pin_idx = 0; pin_idx < n_pin; ++pin_idx) {
       if (when_state_[pin_idx] != INVALID_VCD_EVENT_VAL && when_state_[pin_idx] != ((pin_states[pin_idx] == 2 || pin_states[pin_idx] == 0) ? 0 : 1)) {
@@ -281,6 +285,7 @@ private:
 
   OneDimensionalLUT* fall_table_;
   OneDimensionalLUT* rise_table_;
+  bool when_satisfiable_ = true;
   VcdEventVal when_state_[MAX_N_PIN];
 };
 

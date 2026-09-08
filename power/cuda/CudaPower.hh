@@ -89,14 +89,6 @@ protected:
     std::vector<NEeventVal>& pin_waveform_starts, 
     std::vector<NEeventVal>& pin_waveform_ends
   );
-  void getWhenStateVec(
-    const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map, 
-    const std::string& when,
-    const std::string& when_str_separator,
-    const NPinVal n_pin,
-    // Return values.
-    std::vector<VcdEventVal>& when_state_vec
-  ) const;
   struct InternalPowerData
   {
     std::vector<utils::cuda::OneDimensionalLUTPair**> input_ports_internal_power_LUTs;

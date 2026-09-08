@@ -108,8 +108,6 @@ parseMyPowerArgs(int &argc,
     } else {
       LOG_ERROR << "Unknown max_event_num_arg: " << max_event_num_arg;
     }
-  } else {
-    LOG_ERROR << "No max_event_num_arg";
   }
   //--------------------------------------------end of max_event_num--------------------------------------------
 
@@ -214,6 +212,13 @@ parseMyPowerArgs(int &argc,
     LOG_INFO << "Report CUDA power thread allocation statistics.";
   }
   //--------------------------------------------end of report cuda power thread alloc stat--------------------------------------------
+
+  if (G_CONFIG.flags.enable_cuda_power_analysis
+      && n_cycle_per_thread_arg != nullptr
+      && G_CONFIG.flags.enable_auto_select_n_cycle_per_thread_for_each_gate) {
+    LOG_ERROR << "-n_cycle_per_thread requires -disable_n_cycle_auto_selection "
+              << "when CUDA power analysis is enabled.";
+  }
 
   LOG_END(INFO, "Setting my power analysis args");
 }

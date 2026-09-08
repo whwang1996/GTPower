@@ -34,7 +34,7 @@ project(STA VERSION 2.6.0
 )
 
 
-option(CUDD_DIR "CUDD BDD package directory")
+set(CUDD_DIR "" CACHE PATH "CUDD BDD package directory")
 option(USE_TCL_READLINE "Use TCL readline package" ON)
 option(USE_SANITIZE "Compile with santize address enabled")
 set(FSDB_READER_DIR "" CACHE PATH "FSDB Reader directory (empty disables FSDB support)")
@@ -53,14 +53,15 @@ message(STATUS "STA git sha: ${STA_GIT_SHA1}")
 
 # Default to bulding optimnized/release executable.
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RELEASE)
+  set(CMAKE_BUILD_TYPE Release)
 endif()
 
+string(TOUPPER "${CMAKE_BUILD_TYPE}" STA_BUILD_TYPE_UPPER)
 message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "Build CXX_FLAGS: ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}}")
-message(STATUS "Build CUDA_FLAGS: ${CMAKE_CUDA_FLAGS_${CMAKE_BUILD_TYPE}}")
+message(STATUS "Build CXX_FLAGS: ${CMAKE_CXX_FLAGS_${STA_BUILD_TYPE_UPPER}}")
+message(STATUS "Build CUDA_FLAGS: ${CMAKE_CUDA_FLAGS_${STA_BUILD_TYPE_UPPER}}")
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
 
 ################################################################
@@ -626,7 +627,11 @@ target_compile_features(OpenSTA PUBLIC cxx_std_17)
 # CUDA
 ###########################################################
 add_library(CUDA_POWER_ANALYSIS)
-set_target_properties(CUDA_POWER_ANALYSIS PROPERTIES CUDA_SEPARABLE_COMPILATION ON) 
+set_target_properties(CUDA_POWER_ANALYSIS PROPERTIES
+  CUDA_SEPARABLE_COMPILATION ON
+  CUDA_STANDARD 17
+  CUDA_STANDARD_REQUIRED ON
+)
 target_link_libraries(CUDA_POWER_ANALYSIS PRIVATE OpenMP::OpenMP_CXX)
 target_compile_options(CUDA_POWER_ANALYSIS PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-fopenmp>)
 

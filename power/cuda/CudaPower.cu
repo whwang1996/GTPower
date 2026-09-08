@@ -1354,7 +1354,6 @@ CudaPower::printSettings()
   LOG_INFO << "n_cycle_auto_selection_parallelism_floor: " << G_CONFIG.nums.n_cycle_auto_selection_parallelism_floor;
   LOG_INFO << "n_cycle_auto_selection_e_target: " << G_CONFIG.nums.n_cycle_auto_selection_e_target;
   LOG_INFO << "max_n_pin_for_leakage_power: " << G_CONFIG.nums.max_n_pin_for_leakage_power << " max_n_pin_for_internal_power: " << G_CONFIG.nums.max_n_pin_for_internal_power;
-  LOG_INFO << "leakage_power_separator: " << G_CONFIG.strs.leakage_power_separator << " internal_power_separator: " << G_CONFIG.strs.internal_power_separator;
 
 #ifdef DISABLE_BSIM
   LOG_INFO << "BSIM disabled";
@@ -2246,33 +2245,6 @@ CudaPower::getDelay(
   }
 }
 
-void
-CudaPower::getWhenStateVec(
-  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map, 
-  const std::string& when,
-  const std::string& when_str_separator,
-  const NPinVal n_pin,
-  // Return values.
-  std::vector<VcdEventVal>& when_state_vec
-) const
-{
-  StringVector when_pin_states;
-  split(when, when_str_separator, when_pin_states);
-
-  when_state_vec.clear();
-  when_state_vec.resize(n_pin, INVALID_VCD_EVENT_VAL);
-  for (auto& pin_state: when_pin_states) {
-    trim(pin_state);
-    VcdEventVal cur_pin_state = 1;
-    if (pin_state.at(0) == '!') {
-      cur_pin_state = 0;
-      pin_state = pin_state.substr(1);
-    }
-
-    when_state_vec[port_name_to_idx_map.at(pin_state)] = cur_pin_state;
-  }
-}
-
 const CudaPower::LeakagePowerData&
 CudaPower::getLeakagePowerData(
   const LibertyCell *cell,
@@ -2407,6 +2379,8 @@ CudaPower::getInputInternalPower(
   std::vector<OneDimensionalLUTPair*> h_cur_port_internal_power_LUTs(n_state == INVALID_N_STATE ? 0 : n_state, nullptr);
   std::vector<OneDimensionalLUTPair*> h_cur_port_internal_power_LUTs_indexed_by_order;
   for (const InternalPower *pwr: internal_pwrs) {  // TODO sort internal power to make unconditioned one ahead
+    std::vector<VcdEventVal> when_state_vec;
+    const bool when_satisfiable = ::power::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
     OneDimensionalLUTPair* d_1d_lut_pair_ptr = new OneDimensionalLUTPair;
     CUDA_MEM_STATS.add(CudaMemCategory::lut_managed, sizeof(OneDimensionalLUTPair));
     for (RiseFall *rf : RiseFall::range()) {
@@ -2430,15 +2404,13 @@ CudaPower::getInputInternalPower(
       }
     }
 
-    std::vector<VcdEventVal> when_state_vec;
-    getWhenStateVec(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, n_pin, when_state_vec);
-    d_1d_lut_pair_ptr->setWhenState(when_state_vec);
+    d_1d_lut_pair_ptr->setWhenState(when_state_vec, when_satisfiable);
 
     if (n_state != INVALID_N_STATE) {
       utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
       assert(h_cur_port_internal_power_LUTs.size() != 0);
       std::vector<NStateVal> matched_state_idxs;
-      getStateIdx(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, matched_state_idxs);
+      getStateIdx(port_name_to_idx_map, pwr->when(), matched_state_idxs);
       for (const NStateVal matched_state_idx: matched_state_idxs) {
         h_cur_port_internal_power_LUTs[matched_state_idx] = d_1d_lut_pair_ptr;
       }
@@ -2550,6 +2522,8 @@ CudaPower::getOutputInternalPower(
     const auto& cur_related_port_internal_pwrs = port_to_internal_pwrs_map.find(cur_related_port->name()) == port_to_internal_pwrs_map.end() ? 
       port_to_internal_pwrs_map.at(INVALID_PORT_NAME) : port_to_internal_pwrs_map.at(cur_related_port->name());
     for (const InternalPower *pwr: cur_related_port_internal_pwrs) {  // TODO sort internal power to make unconditioned one ahead
+      std::vector<VcdEventVal> when_state_vec;
+      const bool when_satisfiable = ::power::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
       TwoDimensionalLUTPair* d_2d_lut_pair_ptr = new TwoDimensionalLUTPair;
       CUDA_MEM_STATS.add(CudaMemCategory::lut_managed, sizeof(TwoDimensionalLUTPair));
       for (RiseFall *rf : RiseFall::range()) {
@@ -2590,15 +2564,13 @@ CudaPower::getOutputInternalPower(
           LOG_ERROR << "CudaPower::getInputInternalPower unexpected rf name: " << rf->name();
         }
       }
-      std::vector<VcdEventVal> when_state_vec;
-      getWhenStateVec(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, n_pin, when_state_vec);
-      d_2d_lut_pair_ptr->setWhenState(when_state_vec);
+      d_2d_lut_pair_ptr->setWhenState(when_state_vec, when_satisfiable);
 
       if (n_state != INVALID_N_STATE) {
         utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
         assert(h_cur_related_port_internal_power_LUTs.size() != 0);
         std::vector<NStateVal> matched_state_idxs;
-        getStateIdx(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, matched_state_idxs);
+        getStateIdx(port_name_to_idx_map, pwr->when(), matched_state_idxs);
         for (const NStateVal matched_state_idx: matched_state_idxs) {
           h_cur_related_port_internal_power_LUTs[matched_state_idx] = d_2d_lut_pair_ptr;
         }

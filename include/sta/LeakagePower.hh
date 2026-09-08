@@ -51,15 +51,11 @@ public:
   ~LeakagePower();
   LibertyCell *libertyCell() const { return cell_; }
   FuncExpr *when() const { return when_; }
-  const std::string& whenStr() const { return when_str_; }
-  const StringVector& whenStates() const { return when_states_; }
   float power() const { return power_; }
 
 protected:
   LibertyCell *cell_;
   FuncExpr *when_;
-  std::string when_str_;
-  StringVector when_states_;
   float power_;
 };
 

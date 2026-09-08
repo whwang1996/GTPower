@@ -19,7 +19,7 @@
 #include "FuncExpr.hh"
 #include "TableModel.hh"
 #include "Liberty.hh"
-#include "GlobalConfig.hh"
+#include "Log.hh"
 
 namespace sta {
 
@@ -41,16 +41,12 @@ LeakagePower::LeakagePower(LibertyCell *cell,
 			   LeakagePowerAttrs *attrs) :
   cell_(cell),
   when_(attrs->when()),
-  when_str_(),
-  when_states_(),
   power_(attrs->power())
 {
-  split(attrs->whenStr(), G_CONFIG.strs.leakage_power_separator, when_states_);
-  std::sort(when_states_.begin(), when_states_.end());
-  for (std::string& when_state: when_states_) {
-    trim(when_state);
+  if (!attrs->whenStr().empty() && when_ == nullptr) {
+    LOG_ERROR << "Invalid leakage_power when expression for " << cell->name()
+      << ": " << attrs->whenStr();
   }
-  when_str_ = strJoin(when_states_, G_CONFIG.strs.leakage_power_separator);
 
   cell->addLeakagePower(this);
 }
