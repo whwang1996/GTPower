@@ -6,8 +6,11 @@
 #include "StringUtil.hh"
 #include "GlobalConfig.hh"
 #include "Graph.hh"
-#include "LeakagePower.hh"
 #include "InternalPower.hh"
+#include "FuncExpr.hh"
+#include "Liberty.hh"
+#include "Defines.hh"
+#include "Log.hh"
 
 using namespace sta;
 
@@ -86,68 +89,125 @@ findLeakageVal(
   }
 }
 
-// find leakage power value according to previous state
-void
-findLeakageVal(
-  const std::vector<std::string>& input_pin_states, 
-  const std::unordered_map<std::string, const sta::LeakagePower*>& when_str_to_leakage_power,
-  const bool default_leakage_exists,
-  const PowerVal default_leakage_power_val,
-  // Return values
-  PowerVal* leakage_val,
-  std::string* input_state_annotation
-  ) 
+namespace {
+
+NPinVal
+whenPinIndex(
+  const FuncExpr* expr,
+  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map
+)
 {
-  auto tmp_states = input_pin_states;
-  std::sort(tmp_states.begin(), tmp_states.end());
-  *input_state_annotation = sta::strJoin(tmp_states, G_CONFIG.strs.leakage_power_separator);
-
-  if (when_str_to_leakage_power.find(*input_state_annotation) != when_str_to_leakage_power.end()) {
-    *leakage_val = when_str_to_leakage_power.at(*input_state_annotation)->power();
-  } else {
-    bool substr_condition_found = false;
-    for (auto it = when_str_to_leakage_power.begin(); it != when_str_to_leakage_power.end(); ++it) {
-      if (input_state_annotation->find(it->first) != std::string::npos) {
-        substr_condition_found = true;
-        *leakage_val = it->second->power();
-        break;
-      }
-    }
-
-    if (!substr_condition_found) {  // default condition
-      if (!default_leakage_exists) {
-        // LOG_ERROR << "Unconditioned leakage power has no default setting in lib file";
-        *leakage_val = 0.0;
-      }
-      *leakage_val = default_leakage_power_val;
-    }
+  const LibertyPort* port = expr->port();
+  const auto pin = port_name_to_idx_map.find(port->name());
+  if (pin == port_name_to_idx_map.end()) {
+    LOG_ERROR << "Power when expression references an unavailable pin: "
+      << port->libertyCell()->name() << "/" << port->name();
+    return INVALID_PIN_IDX;
   }
+  return pin->second;
+}
+
+bool
+collectWhenPinStates(
+  const FuncExpr* expr,
+  bool negated,
+  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
+  std::vector<VcdEventVal>& when_pin_states
+)
+{
+  switch (expr->op()) {
+  case FuncExpr::op_port: {
+    const NPinVal pin_idx = whenPinIndex(expr, port_name_to_idx_map);
+    const VcdEventVal required_state = negated ? 0 : 1;
+    VcdEventVal& previous_state = when_pin_states.at(pin_idx);
+    if (previous_state != INVALID_VCD_EVENT_VAL && previous_state != required_state) {
+      return false;
+    }
+    previous_state = required_state;
+    return true;
+  }
+  case FuncExpr::op_not:
+    return collectWhenPinStates(expr->left(), !negated, port_name_to_idx_map, when_pin_states);
+  case FuncExpr::op_one:
+    return !negated;
+  case FuncExpr::op_zero:
+    return negated;
+  case FuncExpr::op_and:
+  case FuncExpr::op_or:
+    // De Morgan's law also lets !(A | B) use the same pin-state representation.
+    if ((expr->op() == FuncExpr::op_and && !negated)
+        || (expr->op() == FuncExpr::op_or && negated)) {
+      const bool left = collectWhenPinStates(expr->left(), negated, port_name_to_idx_map, when_pin_states);
+      const bool right = collectWhenPinStates(expr->right(), negated, port_name_to_idx_map, when_pin_states);
+      return left && right;
+    }
+    break;
+  case FuncExpr::op_xor:
+    break;
+  }
+
+  LOG_ERROR << "Unsupported power when expression: " << (negated ? "!(" : "(")
+    << expr->asString() << "). State-based power lookup requires a conjunction of pin states; "
+    << "general OR/XOR conditions are not supported.";
+  return false;
+}
+
+bool
+evalWhen(
+  const FuncExpr* expr,
+  const std::vector<VcdEventVal>& pin_states,
+  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map
+)
+{
+  if (expr == nullptr) {
+    return true;
+  }
+  switch (expr->op()) {
+  case FuncExpr::op_port:
+    // Keep the existing convention that X is treated as zero for power lookup.
+    return pin_states.at(whenPinIndex(expr, port_name_to_idx_map)) == 1;
+  case FuncExpr::op_not:
+    return !evalWhen(expr->left(), pin_states, port_name_to_idx_map);
+  case FuncExpr::op_and:
+    return evalWhen(expr->left(), pin_states, port_name_to_idx_map)
+      && evalWhen(expr->right(), pin_states, port_name_to_idx_map);
+  case FuncExpr::op_or:
+    return evalWhen(expr->left(), pin_states, port_name_to_idx_map)
+      || evalWhen(expr->right(), pin_states, port_name_to_idx_map);
+  case FuncExpr::op_xor:
+    return evalWhen(expr->left(), pin_states, port_name_to_idx_map)
+      != evalWhen(expr->right(), pin_states, port_name_to_idx_map);
+  case FuncExpr::op_one:
+    return true;
+  case FuncExpr::op_zero:
+    return false;
+  }
+  LOG_ERROR << "Unknown operator in power when expression.";
+  return false;
+}
+
+} // namespace
+
+bool
+getWhenPinStates(
+  const FuncExpr* when,
+  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
+  std::vector<VcdEventVal>& when_pin_states
+)
+{
+  when_pin_states.assign(port_name_to_idx_map.size(), INVALID_VCD_EVENT_VAL);
+  return when == nullptr
+    || collectWhenPinStates(when, false, port_name_to_idx_map, when_pin_states);
 }
 
 bool
 isInternalPowerMatchPinStates(
   const std::vector<VcdEventVal>& pin_states,
   const InternalPower *internal_pwr,
-  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map 
+  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map
 )
 {
-  const auto& when_states = internal_pwr->whenStates();
-  const auto& port_names = internal_pwr->portNames();
-  bool matched = true;
-  assert(when_states.size() == port_names.size());
-  for (size_t port_idx = 0; port_idx < when_states.size(); ++port_idx) {
-    const auto& when_state = when_states.at(port_idx);
-    NPinVal corr_pin_idx = port_name_to_idx_map.at(port_names.at(port_idx));
-    VcdEventVal cur_port_state = 1;
-    if (when_state.at(0) == '!') {
-      cur_port_state = 0;
-    }
-    if (cur_port_state != ((pin_states.at(corr_pin_idx) == 0 || pin_states.at(corr_pin_idx) == 2) ? 0 : 1)) {
-      matched = false;
-    }
-  }
-
-  return matched;
+  return evalWhen(internal_pwr->when(), pin_states, port_name_to_idx_map);
 }
 
 float

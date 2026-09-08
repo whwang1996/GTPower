@@ -27,32 +27,26 @@ class GlobalConfigs : public utils::Singleton<common::GlobalConfigs> {
     bool report_cuda_power_thread_alloc_stat = false;
     bool cuda_power_separate_kernels_for_dyn_and_leak = false;  // true: naive baseline, 1T1E dynamic kernel + 1T1C leakage kernel, false: our proposed fusion kernel
     bool enable_auto_select_n_cycle_per_thread_for_each_gate = true;
-    bool force_zero_slew = false;
-    bool enable_synthetic_high_activity_waveform = false;
   };
 
   struct Nums {
-    NEeventVal max_event_num = 1000000000; // 1e9 events for about 10GB memory
+    NEeventVal max_event_num = 400000000; // Event budget per batch; also sets CUDA event buffer capacity.
     int n_event_per_thread_for_all_pins = 32;
     int n_cycle_per_thread = 8;
     const int n_thread_per_block_for_all_pins = 128;
     //--------auto n_cycle selection for each gate--------
     int n_cycle_auto_selection_parallelism_floor = n_thread_per_block_for_all_pins * 4;  // 稀疏时希望大约这么多线程, n_thread_per_block * 4
-    int n_cycle_auto_selection_e_target= 4;
+    int n_cycle_auto_selection_e_target= 8;
     //--------end of auto n_cycle selection for each gate--------
     const int power_res_length_for_each_gate = n_thread_per_block_for_all_pins;
     int max_n_pin_for_leakage_power = 16;
     int max_n_pin_for_internal_power = 16;
     int multi_thread_number = 16;
     int cuda_device_id = INVALID_DEVICE_ID;
-    int synthetic_waveform_toggles_per_cycle = 2;
-    int synthetic_waveform_cycle_count = 100000;
   };
 
   struct Strs {
-    std::string activity_file_format = "fsdb";  // fsdb, vcd, or synthetic
-    const std::string leakage_power_separator = " ";
-    const std::string internal_power_separator = "&";
+    std::string activity_file_format = "fsdb";  // fsdb or vcd
     const std::string power_analysis_res_file_separator = "\t";
     std::string cuda_thread_partition_basis = "cycle";  // IMPORTANT!!! whether partition workload by cycle or event
   };

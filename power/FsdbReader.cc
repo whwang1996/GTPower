@@ -416,55 +416,6 @@ FsdbReader::readVarChanges(ffrObject* ffr_obj, NVarVal start_var_id, NVarVal end
   // --------------------------------end of iteration--------------------------------------
 }
 
-/*
-// -----------------------------------old slicing by prefix sum and binary search-------------------------------------
-void 
-FsdbReader::timeSlicing(const std::vector<NEeventVal>& cyc_idx_to_n_event) const
-{
-  std::vector<NEeventVal> cycle_idx_to_accu_n_event(n_cycle_ + 1, 0);
-  cycle_idx_to_accu_n_event.at(0) = 0;  // exclusive prefix sum
-  for (NPeriodVal cycle_idx = 1; cycle_idx <= n_cycle_; ++cycle_idx) {
-    cycle_idx_to_accu_n_event.at(cycle_idx) = cycle_idx_to_accu_n_event.at(cycle_idx - 1) + cyc_idx_to_n_event.at(cycle_idx - 1);
-  }
-
-  std::vector<NPeriodVal> boundaries(1, 0);
-  while (true) {
-    NPeriodVal cur_boundary = getCycleIntervalBoundaryByCycleIdxToAccuEvents(G_CONFIG.nums.max_event_num * boundaries.size(), cycle_idx_to_accu_n_event);
-    boundaries.push_back(cur_boundary);
-    if (cur_boundary >= n_cycle_) {
-      break;
-    }
-  }
-
-  std::vector<std::pair<VcdEventTime, VcdEventTime>> time_intervals;
-  for (size_t bound_idx = 0; bound_idx < boundaries.size() - 1; ++bound_idx) {
-    time_intervals.emplace_back(boundaries.at(bound_idx) * vcd_time_unit_per_cycle_, (boundaries.at(bound_idx + 1)) * vcd_time_unit_per_cycle_);
-  }
-  vcd_->setTimeIntervals(time_intervals);
-}
-
-NPeriodVal 
-FsdbReader::getCycleIntervalBoundaryByCycleIdxToAccuEvents(
-  NEeventVal target_accu_event_count, 
-  const std::vector<NEeventVal>& cycle_idx_to_accu_n_event
-) const {
-  NPeriodVal left = 0, right = n_cycle_;
-  while (left < right) {  // [left, right)
-    NPeriodVal mid = left + (right - left) / 2;  // avoid overflow
-
-    if (cycle_idx_to_accu_n_event.at(mid) < target_accu_event_count) {
-      left = mid + 1;
-    } else {
-      right = mid;
-    }
-  }
-
-  assert(left == right);
-  return right;
-}
-// -----------------------------------end of old slicing by prefix sum and binary search-------------------------------------
-*/
-
 // new slicing logic by linear scanning
 void
 FsdbReader::timeSlicing(const std::vector<NEeventVal>& cyc_idx_to_n_event) const

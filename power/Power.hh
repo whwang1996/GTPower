@@ -187,8 +187,7 @@ protected:
   void getPinInformation(const Instance *inst, std::vector<const Pin *> *pins, NPinVal *n_pin, NPinVal *n_input_pin, NPinVal *n_output_pin) const;
   void getStateIdx(
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map, 
-    const std::string& when,
-    const std::string& when_str_separator,
+    const FuncExpr* when,
     // Return values.
     std::vector<NStateVal>& matched_state_idxs
   ) const;

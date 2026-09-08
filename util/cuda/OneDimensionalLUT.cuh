@@ -101,34 +101,6 @@ public:
     }
   }
 
-  __host__ __device__ void testLookUp() {
-    idx1_dim_ = 5;
-    idx1_input_transitions_ = new SlewVal[5];
-    idx1_input_transitions_[0] = 0.05;
-    idx1_input_transitions_[1] = 0.1;
-    idx1_input_transitions_[2] = 0.3;
-    idx1_input_transitions_[3] = 0.4;
-    idx1_input_transitions_[4] = 0.5;
-    lookup_table_ = new EnergyVal[5] {
-      0.05, 0.1, 0.15, 0.2, 0.25
-    };
-
-    // ---interpolation---
-    auto transition_time1 = lookUpValue(0.5); // 0.25
-    auto transition_time2 = lookUpValue(0.05); // 0.05
-    auto transition_time3 = lookUpValue(0.2); // 0.125
-    // ---interpolation---
-    // ---extrapolation---
-    auto transition_time4 = lookUpValue(0); // 0
-    auto transition_time5 = lookUpValue(0.6); // 0.3
-    auto transition_time6 = lookUpValue(0.04); // 0.04
-    auto transition_time7 = lookUpValue(1.0); // 0.5
-    // ---extrapolation---
-
-    printf("transition_time1: %f, transition_time2: %f, transition_time3: %f, transition_time4: %f, transition_time5: %f, transition_time6: %f, transition_time7: %f\n", 
-      transition_time1, transition_time2, transition_time3, transition_time4, transition_time5, transition_time6, transition_time7);
-  }
-
   ~OneDimensionalLUT() {
     if (device_allocation_) {
       cudaFree(device_allocation_);
@@ -247,8 +219,9 @@ public:
     }
   }
 
-  void setWhenState(const std::vector<VcdEventVal>& when_state) {
+  void setWhenState(const std::vector<VcdEventVal>& when_state, bool satisfiable = true) {
     assert(when_state.size() <= MAX_N_PIN);
+    when_satisfiable_ = satisfiable;
     initWhenState();
     for (size_t idx = 0; idx < when_state.size(); ++idx) {
       when_state_[idx] = when_state[idx];
@@ -256,6 +229,9 @@ public:
   }
 
   __device__ bool matchPinStates(const VcdEventVal* pin_states, NPinVal n_pin) {
+    if (!when_satisfiable_) {
+      return false;
+    }
     bool matched = true;
     for (NPinVal pin_idx = 0; pin_idx < n_pin; ++pin_idx) {
       if (when_state_[pin_idx] != INVALID_VCD_EVENT_VAL && when_state_[pin_idx] != ((pin_states[pin_idx] == 2 || pin_states[pin_idx] == 0) ? 0 : 1)) {
@@ -309,6 +285,7 @@ private:
 
   OneDimensionalLUT* fall_table_;
   OneDimensionalLUT* rise_table_;
+  bool when_satisfiable_ = true;
   VcdEventVal when_state_[MAX_N_PIN];
 };
 

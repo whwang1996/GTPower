@@ -33,7 +33,6 @@ private:
   void setMaxTime(const fsdbXTag& max_time_tag, const fsdbXTagType x_tag_type);
   void readVarChanges(ffrObject* ffr_obj, NVarVal start_var_id, NVarVal end_var_id, std::vector<NEeventVal>& cyc_idx_to_n_event);  // NOTE the var id start from 1 here, we iterate vars in range [start_var_id, end_var_id]
   void timeSlicing(const std::vector<NEeventVal>& cyc_idx_to_n_event) const;
-  // NPeriodVal getCycleIntervalBoundaryByCycleIdxToAccuEvents(NEeventVal target_accu_event_count, const std::vector<NEeventVal>& cycle_idx_to_accu_n_event) const;
   void closeFfrObj(ffrObject* ffr_obj);
   VcdTime getValueChangeTime(const fsdbTag64& tag);
   VcdTime getValueChangeTime(const fsdbHLTag& tag);

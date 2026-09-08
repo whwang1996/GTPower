@@ -1,7 +1,6 @@
 #include <vector>
 #include <cstring>  // strcmp
 #include <string>
-#include <unordered_set>
 #include <numeric>  // std::accumulate
 #include <fstream>  // std::ofstream
 #include <thread>
@@ -49,7 +48,6 @@ using namespace utils::cuda::power;
 using CudaMemCategory = utils::cuda::CudaMemStats::Category;
 
 // #define DISABLE_BSIM
-// #define POWER_COMPUTATION_KERNEL_EARLY_RETURN
 
 namespace sta {
 namespace power {
@@ -168,24 +166,6 @@ getDefaultOutputPinInternalEnergyVal(
   }
 }
 
-__device__ void
-getEventPrevPinStates(
-  const Gate* gate, const SharedMemGate& sh_cur_gate,
-  NEeventVal event_idx,
-  const Event *events,
-  // Returan Values
-  VcdEventVal* related_input_prev_pin_states
-)
-{
-  for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-    NEeventVal cur_pin_related_event_idx = my_max(
-      sh_cur_gate.pin_waveform_starts[pin_idx],
-      getEventIdxByTime(events, sh_cur_gate.pin_waveform_starts[pin_idx], sh_cur_gate.pin_waveform_ends[pin_idx], events[event_idx].time, false) - 1 // minus one to get the larsest event idx that of which the time is smaller than cur_time
-    );
-    related_input_prev_pin_states[pin_idx] = events[cur_pin_related_event_idx].val;
-  }
-}
-
 __device__ EnergyVal
 getOutputPinInternalEnergyVal(
   const Gate* gate, const Gate& sh_cur_gate,
@@ -255,7 +235,6 @@ getOutputPinInternalEnergyVal(
     sh_cur_gate.pin_waveform_starts[related_pin_idx],
     related_pin_event_idx - 1
   );
-  // getEventPrevPinStates(gate, sh_cur_gate, related_pin_event_idx, events, related_input_prev_pin_states);
 #ifndef DISABLE_BSIM
   const NStateVal state_idx = getPinStatesIndex(prev_pin_states, sh_cur_gate.n_pin);
 #endif
@@ -284,256 +263,6 @@ getOutputPinInternalEnergyVal(
   
   return getDefaultOutputPinInternalEnergyVal(gate, sh_cur_gate, toggle_pin_idx, to_rf);
 }
-
-// __device__ NToggleVal
-// getGlitchScalingRatioClockCycleBased(
-//   const Gate* cur_gate, const SharedMemGate& sh_cur_gate,
-//   const Event *events,
-//   NEeventVal cur_event_idx, NPinVal pin_idx,
-//   PeriodVal clk_period, EventTimeVal vcd_time_scale
-// ) {
-  // if (events[cur_event_idx].is_glitch) {
-  //   NPeriodVal cur_event_period_idx = clkedWaveformIdx(events[cur_event_idx].time * vcd_time_scale, clk_period);
-
-  //   VcdEventTime prev_glitch_pulse_width = INVALID_PULSE_WIDTH;
-  //   if (cur_event_idx - 1 >= sh_cur_gate.pin_waveform_starts[pin_idx] && events[cur_event_idx - 1].is_glitch
-  //       && cur_event_period_idx == clkedWaveformIdx(events[cur_event_idx - 1].time * vcd_time_scale, clk_period)) {
-  //     prev_glitch_pulse_width = events[cur_event_idx].time - events[cur_event_idx - 1].time;
-  //   }
-
-  //   VcdEventTime next_glitch_pulse_width = INVALID_PULSE_WIDTH;
-  //   if (cur_event_idx + 1 < sh_cur_gate.pin_waveform_ends[pin_idx] && events[cur_event_idx + 1].is_glitch
-  //       && cur_event_period_idx == clkedWaveformIdx(events[cur_event_idx + 1].time * vcd_time_scale, clk_period)) {  // next event
-  //     next_glitch_pulse_width = events[cur_event_idx + 1].time - events[cur_event_idx].time;
-  //   }
-
-  //   VcdEventTime selected_glitch_pulse_width = my_max(prev_glitch_pulse_width, next_glitch_pulse_width);
-  //   if (selected_glitch_pulse_width != INVALID_PULSE_WIDTH) {
-  //     const SlewVal sum_slew = sh_cur_gate.pin_rise_slews[pin_idx] + sh_cur_gate.pin_fall_slews[pin_idx];
-  //     NToggleVal scaling_ratio = getTimeBasedGlitchScalingRatio(selected_glitch_pulse_width * vcd_time_scale, sum_slew);
-  //     return scaling_ratio;
-  //   } else {
-  //     return INVALID_N_TOGGLE_VAL;
-  //   }
-  // } else {
-  //   return INVALID_N_TOGGLE_VAL;
-  // }
-// }
-
-// __global__ static void kernel1AllPowerCalculation(
-//     const int n_event_per_thread, const int n_thread_per_block, 
-//     const VcdEventTime interval_start_time, const VcdEventTime interval_end_time, const VcdEventTime max_time, 
-//     PeriodVal clk_period, EventTimeVal vcd_time_scale,
-//     Gate **gates, const Event *events, const NGateVal *block_corr_gate_idxes,
-//     NEeventVal* global_pin_start_event_idxes, NEeventVal* global_pin_end_event_idxes, NEeventVal* global_pin_frontier_event_idxes,
-//     VcdEventVal* global_prev_pin_states, VcdEventVal* global_pin_states, VcdEventVal* global_related_input_prev_pin_states,
-//     bool* global_cur_time_pin_triggereds,
-//     // Return Values
-//     PowerVal *per_cycle_leakage_powers, PowerVal *per_cycle_internal_powers, PowerVal *per_cycle_glitch_internal_powers,
-//     PowerVal *per_cycle_switching_powers, PowerVal *per_cycle_glitch_switching_powers
-//   ) {
-//   // -----------------preparing------------------
-//   const NThreadVal thread_idx_in_block = threadIdx.x;
-//   const NBlockVal idx_of_block = blockIdx.x;
-//   const NGateVal cur_gate_idx = block_corr_gate_idxes[idx_of_block];
-//   const Gate* cur_gate = gates[cur_gate_idx];
-
-//   assert(idx_of_block < cur_gate->all_pins_end_block);
-//   const NThreadVal thread_idx_in_gate = (idx_of_block - cur_gate->all_pins_start_block) * n_thread_per_block + thread_idx_in_block;
-//   const NEeventVal cur_thread_start_event_count = thread_idx_in_gate * n_event_per_thread;
-//   const NEeventVal cur_thread_end_event_count = (thread_idx_in_gate + 1) * n_event_per_thread;
-//   const VcdEventTime cur_thread_start_time = getTimeByAccuEventCount(cur_gate, events, cur_thread_start_event_count, interval_start_time, interval_end_time);
-//   const VcdEventTime cur_thread_end_time = getTimeByAccuEventCount(cur_gate, events, cur_thread_end_event_count, interval_start_time, interval_end_time);
-//   const NThreadVal cur_thread_accu_pin_count = cur_gate->accu_thread_pin_count + thread_idx_in_gate * cur_gate->n_pin;
-//   // [cur_thread_start_time, cur_thread_end_time)
-//   if (cur_thread_start_time >= interval_end_time) {
-//     return;
-//   }
-//   // printf("cur_gate_idx: %lld, cur_thread_start_event_count: %lld, cur_thread_end_event_count: %lld, cur_thread_start_time: %lld, cur_thread_end_time: %lld, interval_start_time: %lld, interval_end_time: %lld\n", 
-//   //   cur_gate_idx, cur_thread_start_event_count, cur_thread_end_event_count, cur_thread_start_time, cur_thread_end_time, interval_start_time, interval_end_time);
-
-//   //--------shared memory--------
-//   __shared__ SharedMemGate sh_cur_gate;
-//   __shared__ NEeventVal sh_pin_waveform_starts[MAX_N_PIN];
-//   __shared__ NEeventVal sh_pin_waveform_ends[MAX_N_PIN];
-//   __shared__ VoltageVal sh_pin_voltages[MAX_N_PIN];
-//   __shared__ SlewVal sh_pin_rise_slews[MAX_N_PIN];
-//   __shared__ SlewVal sh_pin_fall_slews[MAX_N_PIN];
-//   __shared__ CapacitanceVal sh_pin_load_capacitances[MAX_N_PIN];
-//   if (thread_idx_in_block == 0) {
-//     sh_cur_gate.n_pin = cur_gate->n_pin;
-//     for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-//       sh_pin_waveform_starts[pin_idx] = cur_gate->pin_waveform_starts[pin_idx];
-//       sh_pin_waveform_ends[pin_idx] = cur_gate->pin_waveform_ends[pin_idx];
-//       sh_pin_voltages[pin_idx] = cur_gate->pin_voltages[pin_idx];
-//       sh_pin_rise_slews[pin_idx] = cur_gate->pin_rise_slews[pin_idx];
-//       sh_pin_fall_slews[pin_idx] = cur_gate->pin_fall_slews[pin_idx];
-//       sh_pin_load_capacitances[pin_idx] = cur_gate->pin_load_capacitances[pin_idx];
-//     }
-
-//     sh_cur_gate.n_input_pin = cur_gate->n_input_pin;
-//     sh_cur_gate.n_output_pin = cur_gate->n_output_pin;
-//     sh_cur_gate.pin_waveform_starts = sh_pin_waveform_starts;
-//     sh_cur_gate.pin_waveform_ends = sh_pin_waveform_ends;
-//     sh_cur_gate.pin_voltages = sh_pin_voltages;
-//     sh_cur_gate.pin_rise_slews = sh_pin_rise_slews;
-//     sh_cur_gate.pin_fall_slews = sh_pin_fall_slews;
-//     sh_cur_gate.pin_load_capacitances = sh_pin_load_capacitances;
-//   }
-//   __syncthreads();
-//   //--------end of shared memory--------
-
-//   NEeventVal* pin_start_event_idxes = global_pin_start_event_idxes + cur_thread_accu_pin_count;
-//   NEeventVal* pin_end_event_idxes = global_pin_end_event_idxes + cur_thread_accu_pin_count;
-//   for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-//     pin_start_event_idxes[pin_idx] = getEventIdxByTime(
-//       events,
-//       sh_cur_gate.pin_waveform_starts[pin_idx], 
-//       sh_cur_gate.pin_waveform_ends[pin_idx],
-//       cur_thread_start_time
-//     );
-//     pin_end_event_idxes[pin_idx] = getEventIdxByTime(
-//       events,
-//       sh_cur_gate.pin_waveform_starts[pin_idx], 
-//       sh_cur_gate.pin_waveform_ends[pin_idx],
-//       cur_thread_end_time
-//     );
-//     // [pin_start_event_idxes, pin_end_event_idxes)
-//     // printf("cur_gate_idx: %lld, thread_idx_in_block: %lld, pin_idx: %hd, cur_gate->pin_waveform_starts[pin_idx]: %lld, cur_gate->pin_waveform_ends[pin_idx]: %lld pin_start_event_idxes[pin_idx]: %lld, pin_end_event_idxes[pin_idx]: %lld\n", 
-//     //   cur_gate_idx, thread_idx_in_block, pin_idx, cur_gate->pin_waveform_starts[pin_idx], cur_gate->pin_waveform_ends[pin_idx], pin_start_event_idxes[pin_idx], pin_end_event_idxes[pin_idx]);
-//   }
-//   // -----------------end of preparing------------------
-
-//   // ------------------------------loop initial------------------------------
-//   VcdEventVal* prev_pin_states = global_prev_pin_states + cur_thread_accu_pin_count;
-//   NEeventVal* pin_frontier_event_idxes = global_pin_frontier_event_idxes + cur_thread_accu_pin_count;
-//   for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-//     if (sh_cur_gate.pin_waveform_starts[pin_idx] == INVALID_WAVEFORM_PTR || sh_cur_gate.pin_waveform_ends[pin_idx] == INVALID_WAVEFORM_PTR) {
-//       prev_pin_states[pin_idx] = 2;
-//     } else {
-//       NEeventVal cur_pin_prev_event_idx = my_max(sh_cur_gate.pin_waveform_starts[pin_idx], pin_start_event_idxes[pin_idx] - 1);
-//       assert(cur_pin_prev_event_idx != INVALID_WAVEFORM_PTR);
-//       prev_pin_states[pin_idx] = events[cur_pin_prev_event_idx].val;
-//       pin_frontier_event_idxes[pin_idx] = cur_pin_prev_event_idx == sh_cur_gate.pin_waveform_starts[pin_idx] ? (sh_cur_gate.pin_waveform_starts[pin_idx] + 1) : pin_start_event_idxes[pin_idx];  // skip initial condition
-//     }
-//   }
-//   VcdEventTime MAX_TIME = max_time + 10;
-//   VcdEventTime prev_time = cur_thread_start_time;  // TODO check whether this is correct or not
-//   bool* cur_time_pin_triggereds = global_cur_time_pin_triggereds + cur_thread_accu_pin_count;
-//   resetBoolArray(cur_time_pin_triggereds, sh_cur_gate.n_pin);
-//   VcdEventVal* pin_states = global_pin_states + cur_thread_accu_pin_count;
-//   copyPinStates(pin_states, prev_pin_states, sh_cur_gate.n_pin);
-//   // ------------------------------end of loop initial------------------------------
-
-//   while (true) {
-//     // ------------------------------get current min time------------------------------
-//     VcdEventTime cur_time = MAX_TIME;
-//     for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {  // we iterate all pins here, since there might be both input and output pins in when condition
-//       if (sh_cur_gate.pin_waveform_starts[pin_idx] == INVALID_WAVEFORM_PTR || sh_cur_gate.pin_waveform_ends[pin_idx] == INVALID_WAVEFORM_PTR 
-//         || pin_frontier_event_idxes[pin_idx] >= pin_end_event_idxes[pin_idx]) {
-//         continue;
-//       }
-
-//       assert(pin_frontier_event_idxes[pin_idx] != INVALID_WAVEFORM_PTR);
-//       cur_time = my_min(events[pin_frontier_event_idxes[pin_idx]].time, cur_time);
-//     }
-//     if (cur_time == MAX_TIME) {  // no unprocessed input events left 
-//       break;
-//     }
-//     // ------------------------------end of get current min time------------------------------
-
-//     // ------------------------------get new state and advance the frontier------------------------------
-//     for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-//       if (sh_cur_gate.pin_waveform_starts[pin_idx] == INVALID_WAVEFORM_PTR || sh_cur_gate.pin_waveform_ends[pin_idx] == INVALID_WAVEFORM_PTR 
-//         || pin_frontier_event_idxes[pin_idx] >= pin_end_event_idxes[pin_idx]) {
-//         continue;
-//       }
-
-//       if (events[pin_frontier_event_idxes[pin_idx]].time == cur_time) {
-//         pin_states[pin_idx] = events[pin_frontier_event_idxes[pin_idx]].val;
-//         cur_time_pin_triggereds[pin_idx] = true;
-//         ++pin_frontier_event_idxes[pin_idx];
-//       }
-//     }
-//     // ------------------------------end of get new state and advance the frontier------------------------------
-
-//     // ------------------------------find leakage power value according to previous state------------------------------
-//     PowerVal leakage_val = findLeakageVal(cur_gate, sh_cur_gate, prev_pin_states);
-//     // ------------------------------end of find leakage power value according to previous state------------------------------
-
-//     // ------------------------------calculate leakage power------------------------------
-//     cur_gate->per_tile_leakage_res[thread_idx_in_gate] += leakage_val * (cur_time - prev_time) / max_time;
-//     calculatePerCycleLeakagePower(cur_gate, leakage_val, prev_time, cur_time, vcd_time_scale, clk_period, per_cycle_leakage_powers);
-//     // ------------------------------end of calculate leakage power------------------------------
-
-//     // ------------------------------dynamic power------------------------------
-//     for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-//       if (cur_time_pin_triggereds[pin_idx]) {
-//         NEeventVal cur_event_idx = pin_frontier_event_idxes[pin_idx] - 1;
-//         const float n_toggle = getNToggle(prev_pin_states[pin_idx], pin_states[pin_idx]);
-//         NToggleVal glitch_scaling_ratio = getGlitchScalingRatioClockCycleBased(cur_gate, sh_cur_gate, events, cur_event_idx, pin_idx, clk_period, vcd_time_scale);
-
-//         EnergyVal cur_internal_energy = 0.0;
-//         if (pin_idx < cur_gate->n_input_pin) {  // for input pin
-//           cur_internal_energy = n_toggle * getInputPinInternalEnergyVal(cur_gate, sh_cur_gate, prev_pin_states, pin_idx, getRiseFallEdge(prev_pin_states[pin_idx], pin_states[pin_idx]));
-//           // printf("cur_time: %lld, pin_idx: %hd, rise_fall: %s, input internal cur_internal_energy: %e\n", cur_time, pin_idx, getRiseFallEdge(prev_pin_states[pin_idx], pin_states[pin_idx]) == 0 ? "rise" : "fall", cur_internal_energy);
-//         } else {  // for output pin
-//           cur_internal_energy = n_toggle * getOutputPinInternalEnergyVal(cur_gate, sh_cur_gate, events, cur_time, pin_idx, getRiseFallEdge(prev_pin_states[pin_idx], pin_states[pin_idx]), max_time, vcd_time_scale, clk_period, global_related_input_prev_pin_states + cur_thread_accu_pin_count);
-//           // if (getRiseFallEdge(prev_pin_states[pin_idx], pin_states[pin_idx]) == RISE) {
-//           //   cur_internal_energy -= n_toggle * cur_gate->getSingleRiseTransitionEnergy(pin_idx) / 2;
-//           // } else {
-//           //   cur_internal_energy += n_toggle * cur_gate->getSingleRiseTransitionEnergy(pin_idx) / 2;
-//           // }
-//           // printf("cur_time: %lld, pin_idx: %hd, rise_fall: %s output internal cur_internal_energy: %e\n", cur_time, pin_idx, getRiseFallEdge(prev_pin_states[pin_idx], pin_states[pin_idx]) == 0 ? "rise" : "fall", cur_internal_energy);
-
-//           //-----switching-----
-//           NToggleVal n_cur_transition_rise = getNRise(prev_pin_states[pin_idx], pin_states[pin_idx]);
-//           if (n_cur_transition_rise > 0) {
-//             const EnergyVal cur_switching_energy = n_cur_transition_rise * sh_cur_gate.getSingleRiseTransitionEnergy(pin_idx);
-//             if (glitch_scaling_ratio > 0) {
-//               cur_gate->per_tile_glitch_switching_res[thread_idx_in_gate] += (glitch_scaling_ratio * cur_switching_energy) / (max_time * vcd_time_scale);
-//               atomicAdd(&per_cycle_glitch_switching_powers[clkedWaveformIdx(cur_time * vcd_time_scale, clk_period)], glitch_scaling_ratio * cur_switching_energy / clk_period);
-//             } else {
-//               // printf("cur_gate_idx: %lld, cur_time: %lld, n_cur_transition_rise: %f\n", cur_gate_idx, cur_time, n_cur_transition_rise);
-//               cur_gate->per_tile_switching_res[thread_idx_in_gate] += cur_switching_energy / (max_time * vcd_time_scale);
-//               atomicAdd(&per_cycle_switching_powers[clkedWaveformIdx(cur_time * vcd_time_scale, clk_period)], cur_switching_energy / clk_period);
-//             }
-//           }
-//           //-----end of switching-----
-//         }
-//         //-----internal-----
-//         // printf("gate_idx: %lld, pin_idx: %hd, prev_time: %lld, prev_val: %hd, cur_time: %lld, cur_val: %hd, n_toggle: %e, cur_internal_energy: %e, rise_fall: %s\n", 
-//         //   cur_gate_idx, pin_idx, prev_time, prev_pin_states[pin_idx], cur_time, pin_states[pin_idx],
-//         //   n_toggle, cur_internal_energy,
-//         //   getRiseFallEdge(prev_pin_states[pin_idx], pin_states[pin_idx]) == RISE ? "RISE" : "FALL"
-//         // );
-//         if (glitch_scaling_ratio > 0) {
-//           cur_gate->per_tile_glitch_internal_res[thread_idx_in_gate] += glitch_scaling_ratio * cur_internal_energy / (max_time * vcd_time_scale);
-//           atomicAdd(&per_cycle_glitch_internal_powers[clkedWaveformIdx(cur_time * vcd_time_scale, clk_period)], glitch_scaling_ratio *  cur_internal_energy / clk_period);
-//         } else {
-//           cur_gate->per_tile_internal_res[thread_idx_in_gate] += cur_internal_energy / (max_time * vcd_time_scale);
-//           atomicAdd(&per_cycle_internal_powers[clkedWaveformIdx(cur_time * vcd_time_scale, clk_period)], cur_internal_energy / clk_period);
-//         }
-//         //-----end of internal-----
-//       }
-//     }
-//     // ------------------------------end of dynamic power------------------------------
-
-//     // ------------------------------wrap up------------------------------
-//     prev_time = cur_time;
-//     copyPinStates(prev_pin_states, pin_states, sh_cur_gate.n_pin);
-//     resetBoolArray(cur_time_pin_triggereds, sh_cur_gate.n_pin);
-//     // ------------------------------end of wrap up------------------------------
-//   }
-
-//   // -----------------warp up------------------
-//   PowerVal final_leakage_val = findLeakageVal(cur_gate, sh_cur_gate, prev_pin_states);
-//   // TODO check is cur_thread_end_time correct?
-//   VcdEventTime final_end_time = my_min(cur_thread_end_time, max_time);
-//   cur_gate->per_tile_leakage_res[thread_idx_in_gate] += final_leakage_val * (final_end_time - prev_time) / max_time;
-//   calculatePerCycleLeakagePower(cur_gate, final_leakage_val, prev_time, final_end_time, vcd_time_scale, clk_period, per_cycle_leakage_powers);
-//   // -----------------end of wrap up------------------
-// }
 
 __device__ NToggleVal
 getGlitchScalingRatioClockCycleBasedOnDeviceOnly(
@@ -587,10 +316,6 @@ __global__ static void kernel1AllPowerCalculationTimeRangePartitionedByCycleUnit
     const NPeriodVal interval_start_period_idx, const NPeriodVal interval_end_period_idx, const NEeventVal vcd_time_unit_per_cycle, const VcdEventTime max_time, 
     PeriodVal clk_period, EventTimeVal vcd_time_scale,
     Gate *gates, const Event *events, const NGateVal *block_corr_gate_idxes,
-    // NEeventVal* global_pin_start_event_idxes, NEeventVal* global_pin_end_event_idxes, NEeventVal* global_pin_frontier_event_idxes,
-    // VcdEventVal* global_prev_pin_states, VcdEventVal* global_pin_states, 
-    // VcdEventVal* global_related_input_prev_pin_states,
-    // bool* global_cur_time_pin_triggereds, NPeriodVal* global_pin_cur_period_idxes, NEeventInOnePeriodVal* global_pin_n_event_in_cur_period,
     // Return Values
     PowerVal *per_cycle_leakage_powers, PowerVal *per_cycle_internal_powers, PowerVal *per_cycle_glitch_internal_powers,
     PowerVal *per_cycle_switching_powers, PowerVal *per_cycle_glitch_switching_powers,
@@ -602,50 +327,6 @@ __global__ static void kernel1AllPowerCalculationTimeRangePartitionedByCycleUnit
   const NGateVal cur_gate_idx = block_corr_gate_idxes[idx_of_block];
   const Gate* cur_gate = &gates[cur_gate_idx];
   const Gate& sh_cur_gate = gates[cur_gate_idx];
-
-  // __shared__ SharedMemGate sh_cur_gate;
-  // if (thread_idx_in_block == 0) {
-  //   sh_cur_gate.n_pin = cur_gate->n_pin;
-  //   sh_cur_gate.n_input_pin = cur_gate->n_input_pin;
-  //   sh_cur_gate.n_output_pin = cur_gate->n_output_pin;
-  //   sh_cur_gate.pin_voltages = cur_gate->pin_voltages;
-  //   sh_cur_gate.pin_rise_slews = cur_gate->pin_rise_slews;
-  //   sh_cur_gate.pin_fall_slews = cur_gate->pin_fall_slews;
-  //   sh_cur_gate.pin_load_capacitances = cur_gate->pin_load_capacitances;
-  // }
-
-  // NEeventVal n_event_of_cur_gate = 0;
-  // for (NPinVal pin_idx = 0; pin_idx < cur_gate->n_pin; ++pin_idx) {
-  //   n_event_of_cur_gate += (cur_gate->pin_waveform_ends[pin_idx] - cur_gate->pin_waveform_starts[pin_idx]);
-  // }
-  // __shared__ Event sh_events[N_EVENT_THR];
-  // __shared__ NEeventVal sh_pin_waveform_starts[SHR_N_PIN_THR];
-  // __shared__ NEeventVal sh_pin_waveform_ends[SHR_N_PIN_THR];
-  // if (cur_gate->n_pin <= SHR_N_PIN_THR && n_event_of_cur_gate <= N_EVENT_THR) {
-  //   if (thread_idx_in_block < cur_gate->n_pin) {
-  //     NEeventVal offset = 0;
-  //     for (NPinVal pin_idx = 0; pin_idx < thread_idx_in_block; ++pin_idx) {
-  //       offset += (cur_gate->pin_waveform_ends[pin_idx] - cur_gate->pin_waveform_starts[pin_idx]);
-  //     }
-  //     for (NEeventVal event_idx = cur_gate->pin_waveform_starts[thread_idx_in_block]; event_idx < cur_gate->pin_waveform_ends[thread_idx_in_block]; ++event_idx) {
-  //       // printf("idx: %lld offset: %lld n_event_of_cur_gate: %lld\n", event_idx - cur_gate->pin_waveform_starts[thread_idx_in_block] + offset, offset, n_event_of_cur_gate);
-  //       sh_events[event_idx - cur_gate->pin_waveform_starts[thread_idx_in_block] + offset].time = events[event_idx].time;
-  //       sh_events[event_idx - cur_gate->pin_waveform_starts[thread_idx_in_block] + offset].val = events[event_idx].val;
-  //     }
-
-  //     sh_pin_waveform_starts[thread_idx_in_block] = offset;
-  //     sh_pin_waveform_ends[thread_idx_in_block] = offset + (cur_gate->pin_waveform_ends[thread_idx_in_block] - cur_gate->pin_waveform_starts[thread_idx_in_block]);
-  //   }
-  //   events = sh_events;
-  //   if (thread_idx_in_block == 0) {
-  //     sh_cur_gate.pin_waveform_starts = sh_pin_waveform_starts;
-  //     sh_cur_gate.pin_waveform_ends = sh_pin_waveform_ends;
-  //   }
-  // } else {
-  //   sh_cur_gate.pin_waveform_starts = cur_gate->pin_waveform_starts;
-  //   sh_cur_gate.pin_waveform_ends = cur_gate->pin_waveform_ends;
-  // }
-  // __syncthreads();
 
   assert(idx_of_block < cur_gate->getEndBlockIdx(cuda_thread_partition_basis));
   const NThreadVal thread_idx_in_gate = (idx_of_block - cur_gate->getStartBlockIdx(cuda_thread_partition_basis)) * n_thread_per_block + thread_idx_in_block;
@@ -664,48 +345,6 @@ __global__ static void kernel1AllPowerCalculationTimeRangePartitionedByCycleUnit
 
   const VcdEventTime cur_thread_start_time = cur_thread_start_period_idx * vcd_time_unit_per_cycle;
   const VcdEventTime cur_thread_end_time = cur_thread_end_period_idx * vcd_time_unit_per_cycle + (cur_thread_end_period_idx == interval_end_period_idx ? 1 : 0);  // add 1 to cover the event occurs on the last time
-  // const NThreadVal cur_thread_accu_pin_count = cur_gate->accu_thread_pin_count + thread_idx_in_gate * cur_gate->n_pin;
-
-  // --------shared memory--------
-  // __shared__ SharedMemGate sh_cur_gate;
-  // __shared__ NEeventVal sh_pin_waveform_starts[MAX_N_PIN];
-  // __shared__ NEeventVal sh_pin_waveform_ends[MAX_N_PIN];
-  // __shared__ VoltageVal sh_pin_voltages[MAX_N_PIN];
-  // __shared__ SlewVal sh_pin_rise_slews[MAX_N_PIN];
-  // __shared__ SlewVal sh_pin_fall_slews[MAX_N_PIN];
-  // __shared__ CapacitanceVal sh_pin_load_capacitances[MAX_N_PIN];
-  // if (thread_idx_in_block == 0) {
-  //   sh_cur_gate.n_pin = cur_gate->n_pin;
-  //   sh_cur_gate.n_input_pin = cur_gate->n_input_pin;
-  //   sh_cur_gate.n_output_pin = cur_gate->n_output_pin;
-  // }
-  // if (cur_gate->n_pin <= MAX_N_PIN) {
-  //   if (thread_idx_in_block < cur_gate->n_pin) {
-  //     sh_pin_waveform_starts[thread_idx_in_block] = cur_gate->pin_waveform_starts[thread_idx_in_block];
-  //     sh_pin_waveform_ends[thread_idx_in_block] = cur_gate->pin_waveform_ends[thread_idx_in_block];
-  //     sh_pin_voltages[thread_idx_in_block] = cur_gate->pin_voltages[thread_idx_in_block];
-  //     sh_pin_rise_slews[thread_idx_in_block] = cur_gate->pin_rise_slews[thread_idx_in_block];
-  //     sh_pin_fall_slews[thread_idx_in_block] = cur_gate->pin_fall_slews[thread_idx_in_block];
-  //     sh_pin_load_capacitances[thread_idx_in_block] = cur_gate->pin_load_capacitances[thread_idx_in_block];
-  //   }
-
-  //   sh_cur_gate.pin_waveform_starts = sh_pin_waveform_starts;
-  //   sh_cur_gate.pin_waveform_ends = sh_pin_waveform_ends;
-  //   sh_cur_gate.pin_voltages = sh_pin_voltages;
-  //   sh_cur_gate.pin_rise_slews = sh_pin_rise_slews;
-  //   sh_cur_gate.pin_fall_slews = sh_pin_fall_slews;
-  //   sh_cur_gate.pin_load_capacitances = sh_pin_load_capacitances;
-  // } else {
-  //   sh_cur_gate.pin_waveform_starts = cur_gate->pin_waveform_starts;
-  //   sh_cur_gate.pin_waveform_ends = cur_gate->pin_waveform_ends;
-  //   sh_cur_gate.pin_voltages = cur_gate->pin_voltages;
-  //   sh_cur_gate.pin_rise_slews = cur_gate->pin_rise_slews;
-  //   sh_cur_gate.pin_fall_slews = cur_gate->pin_fall_slews;
-  //   sh_cur_gate.pin_load_capacitances = cur_gate->pin_load_capacitances;
-  // }
-  // __syncthreads();
-  //--------end of shared memory--------
-
   // [cur_thread_start_time, cur_thread_end_time)
   if (thread_idx_in_gate >= (cur_gate->getEndThreadIdx(cuda_thread_partition_basis) - cur_gate->getStartThreadIdx(cuda_thread_partition_basis)) || cur_thread_start_period_idx == cur_thread_end_period_idx) {
     return;
@@ -736,14 +375,6 @@ __global__ static void kernel1AllPowerCalculationTimeRangePartitionedByCycleUnit
     // printf("cur_gate_idx: %lld, thread_idx_in_block: %lld, pin_idx: %hd, cur_gate->pin_waveform_starts[pin_idx]: %lld, cur_gate->pin_waveform_ends[pin_idx]: %lld pin_start_event_idxes[pin_idx]: %lld, pin_end_event_idxes[pin_idx]: %lld\n", 
     //   cur_gate_idx, thread_idx_in_block, pin_idx, cur_gate->pin_waveform_starts[pin_idx], cur_gate->pin_waveform_ends[pin_idx], pin_start_event_idxes[pin_idx], pin_end_event_idxes[pin_idx]);
   }
-#ifdef POWER_COMPUTATION_KERNEL_EARLY_RETURN
-  PowerVal tmp_acc = 0;
-  for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-    tmp_acc += (pin_end_event_idxes[pin_idx] + pin_start_event_idxes[pin_idx]);
-  }
-  cur_gate->per_tile_leakage_res[thread_idx_in_block] += tmp_acc; // write to global memory to avoid optimization
-  return;
-#endif
   // -----------------end of preparing------------------
 
   // ------------------------------loop initial------------------------------
@@ -1171,14 +802,6 @@ __global__ static void kernel1_1NaiveDynamicPowerCalculationTimeRangePartitioned
   NToggleVal glitch_scaling_ratio = getGlitchScalingRatioClockCycle_EventCentric(cur_gate, sh_cur_gate,
                                                events, event_idx, pin_idx,
                                                clk_period, vcd_time_scale);
-#ifdef POWER_COMPUTATION_KERNEL_EARLY_RETURN
-  PowerVal tmp_acc = 0;
-  for (NPinVal p = 0; p < sh_cur_gate.n_pin; ++p) {
-    tmp_acc += prev_pin_states[p];
-  }
-  cur_gate->per_tile_leakage_res[thread_idx_in_block] += (glitch_scaling_ratio + tmp_acc); // write to global memory to avoid optimization
-  return;
-#endif
 
   // pin_states = state AFTER applying this ONE event (only this pin changes).
   VcdEventVal pin_states[MAX_N_PIN];
@@ -1317,14 +940,6 @@ __global__ static void kernel1_2NaiveLeakagePowerCalculationTimeRangePartitioned
     // printf("cur_gate_idx: %lld, thread_idx_in_block: %lld, pin_idx: %hd, cur_gate->pin_waveform_starts[pin_idx]: %lld, cur_gate->pin_waveform_ends[pin_idx]: %lld pin_start_event_idxes[pin_idx]: %lld, pin_end_event_idxes[pin_idx]: %lld\n", 
     //   cur_gate_idx, thread_idx_in_block, pin_idx, cur_gate->pin_waveform_starts[pin_idx], cur_gate->pin_waveform_ends[pin_idx], pin_start_event_idxes[pin_idx], pin_end_event_idxes[pin_idx]);
   }
-#ifdef POWER_COMPUTATION_KERNEL_EARLY_RETURN
-  PowerVal tmp_acc = 0;
-  for (NPinVal pin_idx = 0; pin_idx < sh_cur_gate.n_pin; ++pin_idx) {
-    tmp_acc += (pin_end_event_idxes[pin_idx] + pin_start_event_idxes[pin_idx]);
-  }
-  cur_gate->per_tile_leakage_res[thread_idx_in_block] += tmp_acc; // write to global memory to avoid optimization
-  return;
-#endif
   // -----------------end of preparing------------------
 
   // ------------------------------loop initial------------------------------
@@ -1526,25 +1141,6 @@ vcdValueToEventValTable()
   return table;
 }
 
-bool
-isMacroLikeCell(const LibertyCell* cell)
-{
-  return cell && (cell->isMacro() || cell->isMemory() || cell->interfaceTiming());
-}
-
-bool
-isMacroLikeQOutputPin(const LibertyCell* cell, const LibertyPort* port)
-{
-  if (!isMacroLikeCell(cell) || !port || !port->direction()->isAnyOutput()) {
-    return false;
-  }
-
-  const char* port_name = port->name();
-  if (port_name && port_name[0] == '\\') {
-    ++port_name;
-  }
-  return port_name && (strcmp(port_name, "Q") == 0 || strncmp(port_name, "Q[", 2) == 0);
-}
 }
 
 CudaPower::CudaPower(StaState *sta) : 
@@ -1570,15 +1166,6 @@ CudaPower::CudaPower(StaState *sta) :
   n_multiple_output_gate_(0),
   n_block_for_event_partition_(0),
   n_block_for_cycle_partition_(0),
-  // global_pin_start_event_idxes_(nullptr),
-  // global_pin_end_event_idxes_(nullptr),
-  // global_pin_frontier_event_idxes_(nullptr),
-  // global_prev_pin_states_(nullptr),
-  // global_pin_states_(nullptr),
-  // global_related_input_prev_pin_states_(nullptr),
-  // global_cur_time_pin_triggereds_(nullptr),
-  // global_pin_cur_period_idxes_(nullptr),
-  // global_pin_n_event_in_cur_period_(nullptr),
   global_pin_waveform_starts_(nullptr),
   global_pin_waveform_ends_(nullptr),
   global_pin_default_states_(nullptr),
@@ -1717,15 +1304,9 @@ CudaPower::power(const Corner *corner,
       copyWaveformToDeviceSide();
       copyGateDataToDeviceSide();
       CUDA_MEM_STATS.log("CUDA Power Device Memory Breakdown", "after CUDA data setup");
-      // prefetchManagedMemoryForEachRound(G_CONFIG.nums.cuda_device_id, true);
       // ------------------------------end of copy data to device side------------------------------
       runCudaPowerAnalysis(interval.first, interval.second, time_interval_idx < (time_intervals.size() - 1) ? &time_intervals.at(time_interval_idx + 1) : nullptr);
       mergeResult();
-      // if (time_interval_idx != time_intervals.size() - 1) {  // don't prefetch gates and events for the last round
-      //   prefetchManagedMemoryForEachRound(cudaCpuDeviceId, true);
-      // } else {
-      //   prefetchManagedMemoryForEachRound(cudaCpuDeviceId, false);
-      // }
       recordResult();
     }
   } else {
@@ -1735,11 +1316,9 @@ CudaPower::power(const Corner *corner,
     copyWaveformToDeviceSide();
     copyGateDataToDeviceSide();
     CUDA_MEM_STATS.log("CUDA Power Device Memory Breakdown", "after CUDA data setup");
-    // prefetchManagedMemoryForEachRound(G_CONFIG.nums.cuda_device_id, true);
     // ------------------------------end of copy data to device side------------------------------
     runCudaPowerAnalysis(0, vcd_.timeMax() + (G_CONFIG.flags.partition_unit_is_cycle ? vcd_time_unit_per_cycle_ : 1));  // plus one here to make it as an open interval to keep same with multiple rounds
     mergeResult();
-    // prefetchManagedMemoryForEachRound(cudaCpuDeviceId, false);
     recordResult();
   }
 
@@ -1765,7 +1344,6 @@ CudaPower::printSettings()
   LOG_INFO << "overlapping_get_gate_waveform_range: " << (G_CONFIG.flags.overlapping_get_gate_waveform_range ? "true": "false");
   LOG_INFO << "cuda_power_separate_kernels_for_dyn_and_leak: " << (G_CONFIG.flags.cuda_power_separate_kernels_for_dyn_and_leak ? "true": "false");
   LOG_INFO << "enable_auto_select_n_cycle_per_thread_for_each_gate: " << (G_CONFIG.flags.enable_auto_select_n_cycle_per_thread_for_each_gate ? "true": "false");
-  LOG_INFO << "force_zero_slew: " << (G_CONFIG.flags.force_zero_slew ? "true": "false");
   LOG_INFO << "the unit of workload partition is cycle: " << (G_CONFIG.flags.partition_unit_is_cycle ? "true": "false");
 
   LOG_INFO << "max_event_num: " << G_CONFIG.nums.max_event_num << " estimated mem usage for events is " << G_CONFIG.nums.max_event_num * (sizeof(VcdEventTime) + sizeof(VcdEventVal)) / (1024.0 * 1024 * 1024) << "GB";
@@ -1776,7 +1354,6 @@ CudaPower::printSettings()
   LOG_INFO << "n_cycle_auto_selection_parallelism_floor: " << G_CONFIG.nums.n_cycle_auto_selection_parallelism_floor;
   LOG_INFO << "n_cycle_auto_selection_e_target: " << G_CONFIG.nums.n_cycle_auto_selection_e_target;
   LOG_INFO << "max_n_pin_for_leakage_power: " << G_CONFIG.nums.max_n_pin_for_leakage_power << " max_n_pin_for_internal_power: " << G_CONFIG.nums.max_n_pin_for_internal_power;
-  LOG_INFO << "leakage_power_separator: " << G_CONFIG.strs.leakage_power_separator << " internal_power_separator: " << G_CONFIG.strs.internal_power_separator;
 
 #ifdef DISABLE_BSIM
   LOG_INFO << "BSIM disabled";
@@ -1784,11 +1361,6 @@ CudaPower::printSettings()
   LOG_INFO << "BSIM enabled";
 #endif
 
-#ifdef POWER_COMPUTATION_KERNEL_EARLY_RETURN
-  LOG_INFO << "Power computation kernel will early return";
-#else
-  LOG_INFO << "Power computation kernel will run full power computation";
-#endif
 
   LOG_INFO << "result_dir:" << std::filesystem::current_path() / G_CONFIG.paths.result_dir;
   LOG_END(INFO, "CUDA Power Settings");
@@ -1842,42 +1414,6 @@ CudaPower::getTimeIntervalBoudary(
   assert(left == right);
   *boundary = right;
 }
-
-// void
-// CudaPower::getTimeIntervalsByCycle(
-//   // Return values.
-//   std::vector<std::pair<VcdEventTime, VcdEventTime>>& intervals
-// ) const {
-//   utils::ScopedTimer timer_get_time_intervals("getCycleIntervals");
-//   TIMERSTART(GET_CYCLE_INTERVALS);
-
-//   size_t total_bus_width = utils::getTotalBusWidthOfAllVars(vcd_);  // TODO this is the checking for vcd time unit, change it to cycle instead
-//   if (G_CONFIG.nums.max_event_num < 2 * total_bus_width + 1) {
-//     LOG_ERROR << "G_CONFIG.nums.max_event_num " << G_CONFIG.nums.max_event_num << " is too small, which should be twice bigger than total_bus_width: " << total_bus_width;
-//   }
-//   NEeventVal n_event_per_interval = G_CONFIG.nums.max_event_num - total_bus_width - 1; // minus total_bus_width to reserve enuough space for time advancing
-//   LOG_INFO << "n_event_per_interval: " << n_event_per_interval;
-//   int interval_count = 0;
-//   intervals.clear();
-//   while (true) {
-//     // get the inetrval boundary of nth interval
-//     NPeriodVal left_boundary = 0, right_boundary = 0;
-//     getCycleIntervalBoudary(n_event_per_interval * interval_count, &left_boundary);
-//     getCycleIntervalBoudary(n_event_per_interval * (interval_count + 1), &right_boundary);
-//     if (left_boundary == right_boundary) {
-//       LOG_ERROR << "left_boundary: " << left_boundary << " == right_boundary: " << right_boundary;
-//     }
-//     intervals.emplace_back(left_boundary * vcd_time_unit_per_cycle_, right_boundary * vcd_time_unit_per_cycle_);
-//     if (right_boundary >= n_period_) {
-//       break;
-//     }
-//     ++interval_count;
-//   }
-//   intervals.at(intervals.size() - 1).second += 1;
-
-//   TIMEREND(GET_CYCLE_INTERVALS);
-//   DURATION_ms(GET_CYCLE_INTERVALS);
-// }
 
 void
 CudaPower::getTimeIntervalsByCycle(
@@ -2082,48 +1618,6 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
   std::vector<DelayVal> global_cell_arc_delays;
   // -----end of auxiliary arrays-----
 
-  // -----macro Q driven load pins-----
-  // SRAM/macro Q outputs keep real transition in the PT annotation, while most
-  // other pins are forced to zero slew. Treat Q and its directly driven loads
-  // with actual slew so LUT lookup and glitch scaling match that annotation.
-  // Collect the driven loads once so later pin setup only needs an O(1) lookup.
-  std::unordered_set<const Pin*> macro_q_driven_load_pins;
-  size_t n_macro_q_driver_pins = 0;
-  utils::ScopedTimer timer_collect_macro_q_driven_load_pins("Collect Macro Q Driven Load Pins");
-  while (inst_iter->hasNext()) {
-    const Instance* inst = inst_iter->next();
-    LibertyCell* cell = network_->libertyCell(inst);
-    if (!cell || !isMacroLikeCell(cell)) {
-      continue;
-    }
-
-    InstancePinIterator* pin_iter = network_->pinIterator(inst);
-    while (pin_iter->hasNext()) {
-      const Pin* q_pin = pin_iter->next();
-      const LibertyPort* q_port = network_->libertyPort(q_pin);
-      if (!isMacroLikeQOutputPin(cell, q_port) || !network_->isDriver(q_pin)) {
-        continue;
-      }
-
-      ++n_macro_q_driver_pins;
-      PinConnectedPinIterator* connected_pin_iter = network_->connectedPinIterator(q_pin);
-      while (connected_pin_iter->hasNext()) {
-        const Pin* connected_pin = connected_pin_iter->next();
-        if (connected_pin != q_pin && network_->isLoad(connected_pin)) {
-          macro_q_driven_load_pins.insert(connected_pin);
-        }
-      }
-      delete connected_pin_iter;
-    }
-    delete pin_iter;
-  }
-  delete inst_iter;
-  timer_collect_macro_q_driven_load_pins.EndTiming();
-  LOG_INFO << "Collected " << macro_q_driven_load_pins.size()
-    << " pins driven by " << n_macro_q_driver_pins << " macro Q pins for actual slew override";
-  // -----end of macro Q driven load pins-----
-
-  inst_iter = network_->leafInstanceIterator();
   while (inst_iter->hasNext()) {
     const Instance *inst = inst_iter->next();
     if (h_multiple_output_gates_.size() % 1000 == 0) {
@@ -2174,12 +1668,8 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
             << " rise slew: " << rise_slew
             << " fall slew: " << fall_slew;
         }
-        const SlewVal forced_rise_slew = G_CONFIG.flags.force_zero_slew ? 0.0 : rise_slew;
-        const SlewVal forced_fall_slew = G_CONFIG.flags.force_zero_slew ? 0.0 : fall_slew;
-        const bool use_actual_slew = isMacroLikeQOutputPin(cell, cur_port)
-          || macro_q_driven_load_pins.find(cur_pin) != macro_q_driven_load_pins.end();
-        global_pin_rise_slews.push_back(use_actual_slew ? rise_slew : forced_rise_slew);
-        global_pin_fall_slews.push_back(use_actual_slew ? fall_slew : forced_fall_slew);
+        global_pin_rise_slews.push_back(rise_slew);
+        global_pin_fall_slews.push_back(fall_slew);
         global_pin_load_capacitances.push_back(cur_port->direction()->isAnyOutput()
           ? graph_delay_calc_->loadCap(cur_pin, dcalc_ap)
           : 0.0);
@@ -2376,108 +1866,6 @@ CudaPower::getGateWaveformRangeSingleThread(VcdEventTime start_time, VcdEventTim
   TIMEREND(GET_GATE_WAVEFORM_RANGE_SINGLE_THREAD);
   DURATION_ms(GET_GATE_WAVEFORM_RANGE_SINGLE_THREAD);
 }
-
-/*
-void 
-CudaPower::getGateWaveformRangeMultiThread(VcdEventTime start_time, VcdEventTime end_time, std::vector<NEeventVal>& h_global_pin_waveform_starts, std::vector<NEeventVal>& h_global_pin_waveform_ends) {
-  TIMERSTART(GET_GATE_WAVEFORM_RANGE_MULTI_THREAD);
-  bool is_the_first_time_interval = (start_time == 0);
-
-  std::unordered_map<const VcdValue*, std::unordered_map<int, std::pair<NEeventVal, NEeventVal>>> pin_vcd_values_ptr_to_value_bit_to_range_in_event_map;
-  std::unordered_map<const VcdValue*, std::unordered_map<int, std::pair<NEeventVal, NEeventVal>>> pin_vcd_values_ptr_to_value_bit_to_range_in_vcd_map;
-  NEeventVal accu_event_count = 0;
-  omp_set_num_threads(G_CONFIG.nums.multi_thread_number);
-  #pragma omp parallel for
-  for (size_t vcd_values_bit_i = 0; vcd_values_bit_i < vcd_values_bit_pair_list_.size(); vcd_values_bit_i++) {
-    if (vcd_values_bit_i == 0) {
-      printf("omp_get_num_threads: %d\n", omp_get_num_threads());
-    }
-    const auto& vcd_values = vcd_values_bit_pair_list_.at(vcd_values_bit_i).first;
-    int bit_idx = vcd_values_bit_pair_list_.at(vcd_values_bit_i).second;
-    if (var_val_ptr_to_value_bit_to_prev_right_bound_.at(vcd_values).count(bit_idx) == 0) {  // not used bit
-      continue;
-    }
-    // get events in range [start_time, end_time)
-    NEeventVal start_idx_in_vcd_values = is_the_first_time_interval ? 0 : var_val_ptr_to_value_bit_to_prev_right_bound_.at(vcd_values).at(bit_idx) - 1;  // minus one for getting the last state of the previous time interval as previous state
-    NEeventVal end_idx_in_vcd_values = end_time >= max_event_time_ ? vcd_values_ptr_to_n_event_.at(vcd_values) : getEventIdxByTime(vcd_values, vcd_values_ptr_to_n_event_.at(vcd_values), end_time, is_the_first_time_interval ? 0 : var_val_ptr_to_value_bit_to_prev_right_bound_.at(vcd_values).at(bit_idx));
-    NEeventVal n_event_in_range = (end_idx_in_vcd_values - start_idx_in_vcd_values);  // we do not add one here, since the last one is out of range of time
-    #pragma omp critical 
-    {
-      var_val_ptr_to_value_bit_to_prev_right_bound_[vcd_values][bit_idx] = end_idx_in_vcd_values;
-      pin_vcd_values_ptr_to_value_bit_to_range_in_event_map[vcd_values].emplace(bit_idx, std::pair{accu_event_count, accu_event_count + n_event_in_range});
-      pin_vcd_values_ptr_to_value_bit_to_range_in_vcd_map[vcd_values].emplace(bit_idx, std::pair{start_idx_in_vcd_values, end_idx_in_vcd_values});
-      accu_event_count += n_event_in_range;
-    }
-  }
-  if (accu_event_count > G_CONFIG.nums.max_event_num) {
-    LOG_ERROR << "accu_event_count: " << accu_event_count << " exceeds G_CONFIG.nums.max_event_num: " << G_CONFIG.nums.max_event_num;
-  }
-
-  omp_set_num_threads(G_CONFIG.nums.multi_thread_number);
-  #pragma omp parallel for
-  for (size_t vcd_values_bit_i = 0; vcd_values_bit_i < vcd_values_bit_pair_list_.size(); vcd_values_bit_i++) {
-    const auto& vcd_values = vcd_values_bit_pair_list_.at(vcd_values_bit_i).first;
-    int bit_idx = vcd_values_bit_pair_list_.at(vcd_values_bit_i).second;
-    if (var_val_ptr_to_value_bit_to_prev_right_bound_.at(vcd_values).count(bit_idx) == 0) {  // not used bit
-      continue;
-    }
-    NEeventVal start_idx_in_vcd_values = pin_vcd_values_ptr_to_value_bit_to_range_in_vcd_map.at(vcd_values).at(bit_idx).first;
-    NEeventVal end_idx_in_vcd_values = pin_vcd_values_ptr_to_value_bit_to_range_in_vcd_map.at(vcd_values).at(bit_idx).second;
-    NEeventVal cur_bit_waveform_start = pin_vcd_values_ptr_to_value_bit_to_range_in_event_map.at(vcd_values).at(bit_idx).first;
-    for (NEeventVal pos = start_idx_in_vcd_values; pos < end_idx_in_vcd_values; ++pos) {
-      setEvent(vcd_values[pos].time(), vcd_value_to_int_map_.at(vcd_values[pos].value(bit_idx)), false, cur_bit_waveform_start + (pos - start_idx_in_vcd_values));
-    }
-  }
-
-  std::vector<std::vector<NEeventVal>> per_thread_global_pin_waveform_starts(G_CONFIG.nums.multi_thread_number);
-  std::vector<std::vector<NEeventVal>> per_thread_global_pin_waveform_ends(G_CONFIG.nums.multi_thread_number);
-  omp_set_num_threads(G_CONFIG.nums.multi_thread_number);
-  #pragma omp parallel for
-  for (size_t gate_idx = 0; gate_idx < h_multiple_output_gates_.size(); ++gate_idx) {
-    const power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
-    // ---------------------------init pin information------------------------------
-    const std::vector<const Pin *>& pins = inst_to_pins_.at(cur_gate->inst);
-    // ---------------------------end of init pin information------------------------------
-    for (NPinVal pin_idx = 0; pin_idx < pins.size(); ++pin_idx) {
-      const Pin *cur_pin = pins.at(pin_idx);
-      const PwrActivity& activity = findActivity(cur_pin);
-      const VcdValue *cur_pin_vcd_values = activity.vcdValues();
-      const int cur_pin_value_bit = activity.valueBit();
-      NEeventVal cur_pin_waveform_start = INVALID_WAVEFORM_PTR, cur_pin_waveform_end = INVALID_WAVEFORM_PTR;
-      if (cur_pin_vcd_values != nullptr) {
-        cur_pin_waveform_start = pin_vcd_values_ptr_to_value_bit_to_range_in_event_map.at(cur_pin_vcd_values).at(cur_pin_value_bit).first;
-        cur_pin_waveform_end = pin_vcd_values_ptr_to_value_bit_to_range_in_event_map.at(cur_pin_vcd_values).at(cur_pin_value_bit).second;
-      }
-
-      per_thread_global_pin_waveform_starts.at(omp_get_thread_num()).push_back(cur_pin_waveform_start);
-      per_thread_global_pin_waveform_ends.at(omp_get_thread_num()).push_back(cur_pin_waveform_end);
-    }
-  }
-  size_t total_pin_count = 0;
-  for (const auto& sub_vec : per_thread_global_pin_waveform_starts) {
-    total_pin_count += sub_vec.size();
-  }
-  h_global_pin_waveform_starts.reserve(total_pin_count);
-  h_global_pin_waveform_ends.reserve(total_pin_count);
-  for (auto& sub_vec : per_thread_global_pin_waveform_starts) {
-    h_global_pin_waveform_starts.insert(
-      h_global_pin_waveform_starts.end(),
-      std::make_move_iterator(sub_vec.begin()),
-      std::make_move_iterator(sub_vec.end())
-    );
-  }
-  for (auto& sub_vec : per_thread_global_pin_waveform_ends) {
-    h_global_pin_waveform_ends.insert(
-      h_global_pin_waveform_ends.end(),
-      std::make_move_iterator(sub_vec.begin()),
-      std::make_move_iterator(sub_vec.end())
-    );
-  }
-
-  TIMEREND(GET_GATE_WAVEFORM_RANGE_MULTI_THREAD);
-  DURATION_ms(GET_GATE_WAVEFORM_RANGE_MULTI_THREAD);
-}
-*/
 
 // accelerated version provided by ChatGPT
 void
@@ -2857,33 +2245,6 @@ CudaPower::getDelay(
   }
 }
 
-void
-CudaPower::getWhenStateVec(
-  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map, 
-  const std::string& when,
-  const std::string& when_str_separator,
-  const NPinVal n_pin,
-  // Return values.
-  std::vector<VcdEventVal>& when_state_vec
-) const
-{
-  StringVector when_pin_states;
-  split(when, when_str_separator, when_pin_states);
-
-  when_state_vec.clear();
-  when_state_vec.resize(n_pin, INVALID_VCD_EVENT_VAL);
-  for (auto& pin_state: when_pin_states) {
-    trim(pin_state);
-    VcdEventVal cur_pin_state = 1;
-    if (pin_state.at(0) == '!') {
-      cur_pin_state = 0;
-      pin_state = pin_state.substr(1);
-    }
-
-    when_state_vec[port_name_to_idx_map.at(pin_state)] = cur_pin_state;
-  }
-}
-
 const CudaPower::LeakagePowerData&
 CudaPower::getLeakagePowerData(
   const LibertyCell *cell,
@@ -3018,6 +2379,8 @@ CudaPower::getInputInternalPower(
   std::vector<OneDimensionalLUTPair*> h_cur_port_internal_power_LUTs(n_state == INVALID_N_STATE ? 0 : n_state, nullptr);
   std::vector<OneDimensionalLUTPair*> h_cur_port_internal_power_LUTs_indexed_by_order;
   for (const InternalPower *pwr: internal_pwrs) {  // TODO sort internal power to make unconditioned one ahead
+    std::vector<VcdEventVal> when_state_vec;
+    const bool when_satisfiable = ::power::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
     OneDimensionalLUTPair* d_1d_lut_pair_ptr = new OneDimensionalLUTPair;
     CUDA_MEM_STATS.add(CudaMemCategory::lut_managed, sizeof(OneDimensionalLUTPair));
     for (RiseFall *rf : RiseFall::range()) {
@@ -3041,15 +2404,13 @@ CudaPower::getInputInternalPower(
       }
     }
 
-    std::vector<VcdEventVal> when_state_vec;
-    getWhenStateVec(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, n_pin, when_state_vec);
-    d_1d_lut_pair_ptr->setWhenState(when_state_vec);
+    d_1d_lut_pair_ptr->setWhenState(when_state_vec, when_satisfiable);
 
     if (n_state != INVALID_N_STATE) {
       utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
       assert(h_cur_port_internal_power_LUTs.size() != 0);
       std::vector<NStateVal> matched_state_idxs;
-      getStateIdx(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, matched_state_idxs);
+      getStateIdx(port_name_to_idx_map, pwr->when(), matched_state_idxs);
       for (const NStateVal matched_state_idx: matched_state_idxs) {
         h_cur_port_internal_power_LUTs[matched_state_idx] = d_1d_lut_pair_ptr;
       }
@@ -3161,6 +2522,8 @@ CudaPower::getOutputInternalPower(
     const auto& cur_related_port_internal_pwrs = port_to_internal_pwrs_map.find(cur_related_port->name()) == port_to_internal_pwrs_map.end() ? 
       port_to_internal_pwrs_map.at(INVALID_PORT_NAME) : port_to_internal_pwrs_map.at(cur_related_port->name());
     for (const InternalPower *pwr: cur_related_port_internal_pwrs) {  // TODO sort internal power to make unconditioned one ahead
+      std::vector<VcdEventVal> when_state_vec;
+      const bool when_satisfiable = ::power::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
       TwoDimensionalLUTPair* d_2d_lut_pair_ptr = new TwoDimensionalLUTPair;
       CUDA_MEM_STATS.add(CudaMemCategory::lut_managed, sizeof(TwoDimensionalLUTPair));
       for (RiseFall *rf : RiseFall::range()) {
@@ -3201,15 +2564,13 @@ CudaPower::getOutputInternalPower(
           LOG_ERROR << "CudaPower::getInputInternalPower unexpected rf name: " << rf->name();
         }
       }
-      std::vector<VcdEventVal> when_state_vec;
-      getWhenStateVec(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, n_pin, when_state_vec);
-      d_2d_lut_pair_ptr->setWhenState(when_state_vec);
+      d_2d_lut_pair_ptr->setWhenState(when_state_vec, when_satisfiable);
 
       if (n_state != INVALID_N_STATE) {
         utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
         assert(h_cur_related_port_internal_power_LUTs.size() != 0);
         std::vector<NStateVal> matched_state_idxs;
-        getStateIdx(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.internal_power_separator, matched_state_idxs);
+        getStateIdx(port_name_to_idx_map, pwr->when(), matched_state_idxs);
         for (const NStateVal matched_state_idx: matched_state_idxs) {
           h_cur_related_port_internal_power_LUTs[matched_state_idx] = d_2d_lut_pair_ptr;
         }
@@ -3438,33 +2799,6 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
   LOG_INFO << "accu_thread_count_for_event_partition: " << accu_thread_count_for_event_partition << " accu_thread_count_for_cycle_partition: " << accu_thread_count_for_cycle_partition
     << " power_res_length_for_all_gates: " << power_res_length_for_all_gates << " estimated global auxiliary memory usage: " 
     << sizeof(PowerVal) * power_res_length_for_all_gates * 5 / (1024.0 * 1024 * 1024) << "GB";
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_start_event_idxes_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_start_event_idxes_, sizeof(NEeventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_pin_start_event_idxes_, 0, sizeof(NEeventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_end_event_idxes_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_end_event_idxes_, sizeof(NEeventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_pin_end_event_idxes_, 0, sizeof(NEeventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_frontier_event_idxes_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_frontier_event_idxes_, sizeof(NEeventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_pin_frontier_event_idxes_, 0, sizeof(NEeventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_prev_pin_states_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_prev_pin_states_, sizeof(VcdEventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_prev_pin_states_, 0, sizeof(VcdEventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_states_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_states_, sizeof(VcdEventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_pin_states_, 0, sizeof(VcdEventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_related_input_prev_pin_states_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_related_input_prev_pin_states_, sizeof(VcdEventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_related_input_prev_pin_states_, 0, sizeof(VcdEventVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_cur_time_pin_triggereds_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_cur_time_pin_triggereds_, sizeof(bool) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_cur_time_pin_triggereds_, 0, sizeof(bool) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_cur_period_idxes_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_cur_period_idxes_, sizeof(NPeriodVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_pin_cur_period_idxes_, 0, sizeof(NPeriodVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_n_event_in_cur_period_));
-  // CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_n_event_in_cur_period_, sizeof(NEeventInOnePeriodVal) * accu_thread_pin_count));
-  // CHECK_CUDA_RUNTIME(cudaMemset(global_pin_n_event_in_cur_period_, 0, sizeof(NEeventInOnePeriodVal) * accu_thread_pin_count));
   n_block_for_event_partition_ = accu_block_count_for_event_partition;
   utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
   CHECK_CUDA_RUNTIME(cudaFree(block_corr_gate_idxes_for_event_partition_));
@@ -3509,36 +2843,6 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
     );
   }
   // ---------------------------end of get stat information---------------------------
-}
-
-void
-CudaPower::prefetchManagedMemoryForEachRound(int dst_device, bool prefetch_gates) 
-{
-  utils::ScopedTimer timer_prefetch_managed_memory("prefetchManagedMemory");
-  TIMERSTART(PREFETCH_MANAGED_MEM);
-
-  int current_device = G_CONFIG.nums.cuda_device_id;
-  int check_device_concurrent_attr_res = -1;
-  cudaDeviceGetAttribute(&check_device_concurrent_attr_res, cudaDevAttrConcurrentManagedAccess, current_device);  // only works for pascal
-  LOG_INFO << "current_device: " << current_device << " check_device_concurrent_attr_res: " << check_device_concurrent_attr_res;
-  if (!check_device_concurrent_attr_res) {
-    return;
-  }
-  LOG_INFO << "Prefetching memory to " << (dst_device == cudaCpuDeviceId ? "host" : ("cuda device " + std::to_string(dst_device)));
-
-  // TODO decide whether prefetch per cycle result
-
-  // ---------------------------for leakage and internal power------------------------------
-  CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(gate_leakage_powers_, n_multiple_output_gate_ * sizeof(PowerVal), dst_device, NULL));
-  CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(gate_internal_powers_, n_multiple_output_gate_ * sizeof(PowerVal), dst_device, NULL));
-  CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(gate_glitch_internal_powers_, n_multiple_output_gate_ * sizeof(PowerVal), dst_device, NULL));
-  CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(gate_switching_powers_, n_multiple_output_gate_ * sizeof(PowerVal), dst_device, NULL));
-  CHECK_CUDA_RUNTIME(cudaMemPrefetchAsync(gate_glitch_switching_powers_, n_multiple_output_gate_ * sizeof(PowerVal), dst_device, NULL));
-  // ---------------------------end of for leakage and internal power------------------------------
-
-  LOG_INFO << "Prefetch memory to " << (dst_device == cudaCpuDeviceId ? "host" : ("cuda device " + std::to_string(dst_device))) << " complete";
-  TIMEREND(PREFETCH_MANAGED_MEM);
-  DURATION_ms(PREFETCH_MANAGED_MEM);
 }
 
 void
@@ -3603,10 +2907,6 @@ CudaPower::runCudaPowerAnalysis(VcdEventTime interval_start_time, VcdEventTime i
         (interval_start_time / vcd_time_unit_per_cycle_), (interval_end_time / vcd_time_unit_per_cycle_), vcd_time_unit_per_cycle_, max_event_time_, 
         clk_period_, vcd_time_scale_,
         d_multiple_output_gates_, d_events_, block_corr_gate_idxes,
-        // global_pin_start_event_idxes_, global_pin_end_event_idxes_, global_pin_frontier_event_idxes_,
-        // global_prev_pin_states_, global_pin_states_, 
-        // global_related_input_prev_pin_states_,
-        // global_cur_time_pin_triggereds_, global_pin_cur_period_idxes_, global_pin_n_event_in_cur_period_,
         per_cycle_leakage_powers_, per_cycle_internal_powers_, per_cycle_glitch_internal_powers_,
         per_cycle_switching_powers_, per_cycle_glitch_switching_powers_,
         G_CONFIG.nums.power_res_length_for_each_gate
@@ -3615,17 +2915,6 @@ CudaPower::runCudaPowerAnalysis(VcdEventTime interval_start_time, VcdEventTime i
     CHECK_CUDA_RUNTIME(cudaEventRecord(all_stop_cu_event, stream));
   } else {
     LOG_ERROR << "Runnig power calculation partitioned by time";
-    // kernel1AllPowerCalculation<<<n_all_pins_block_, G_CONFIG.nums.n_thread_per_block_for_all_pins>>> (
-    //   G_CONFIG.nums.n_event_per_thread_for_all_pins, G_CONFIG.nums.n_thread_per_block_for_all_pins, 
-    //   interval_start_time, interval_end_time, max_event_time_, 
-    //   static_cast<float>(clk_period_), static_cast<float>(vcd_time_scale_),
-    //   d_multiple_output_gates_, events_, block_corr_gate_idxes_for_all_pins_,
-    //   global_pin_start_event_idxes_, global_pin_end_event_idxes_, global_pin_frontier_event_idxes_,
-    //   global_prev_pin_states_, global_pin_states_, global_related_input_prev_pin_states_,
-    //   global_cur_time_pin_triggereds_,
-    //   per_cycle_leakage_powers_, per_cycle_internal_powers_, per_cycle_glitch_internal_powers_,
-    //   per_cycle_switching_powers_, per_cycle_glitch_switching_powers_
-    // );
   }
   CHECK_CUDA_RUNTIME(cudaGetLastError());
 
@@ -4006,24 +3295,6 @@ CudaPower::releaseMemory()
   //--------------------end of power analysis result-----------------------
 
   // -----auxiliary arrays-----
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_start_event_idxes_));
-  // global_pin_start_event_idxes_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_end_event_idxes_));
-  // global_pin_end_event_idxes_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_frontier_event_idxes_));
-  // global_pin_frontier_event_idxes_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_prev_pin_states_));
-  // global_prev_pin_states_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_states_));
-  // global_pin_states_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_related_input_prev_pin_states_));
-  // global_related_input_prev_pin_states_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_cur_time_pin_triggereds_));
-  // global_cur_time_pin_triggereds_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_cur_period_idxes_));
-  // global_pin_cur_period_idxes_ = nullptr;
-  // CHECK_CUDA_RUNTIME(cudaFree(global_pin_n_event_in_cur_period_));
-  // global_pin_n_event_in_cur_period_ = nullptr;
   // -----auxiliary arrays for gates-----
   CHECK_CUDA_RUNTIME(cudaFree(global_pin_waveform_starts_));
   global_pin_waveform_starts_ = nullptr;

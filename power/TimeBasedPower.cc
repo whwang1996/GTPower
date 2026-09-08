@@ -3,7 +3,6 @@
 #include <limits>  // std::numeric_limits
 #include <cmath>  // floor, ceil
 #include <map>
-#include <unordered_set>
 
 #include "Power.hh"
 
@@ -26,11 +25,6 @@
 using namespace power::utils;
 
 namespace sta {
-static SlewVal
-forceZeroSlewIfRequested(SlewVal slew)
-{
-  return G_CONFIG.flags.force_zero_slew ? 0.0 : slew;
-}
 
 void Power::getCircuitStat()
 {
@@ -296,7 +290,7 @@ Power::getLeakagePower(
 
     for (const LeakagePower* const pwr: leakage_powers) { // TODO sort leakage power to make unconditioned one ahead
       std::vector<NStateVal> matched_state_idxs;
-      getStateIdx(port_name_to_idx_map, pwr->whenStr(), G_CONFIG.strs.leakage_power_separator, matched_state_idxs);
+      getStateIdx(port_name_to_idx_map, pwr->when(), matched_state_idxs);
       for (const NStateVal matched_state_idx: matched_state_idxs) {
         leakage_power_values[matched_state_idx] = pwr->power();
       }
@@ -332,7 +326,7 @@ Power::getGlitchScalingRatioClockCycleBasedH(
           << " rise slew: " << rise_slew
           << " fall slew: " << fall_slew;
       }
-      const SlewVal sum_slew = forceZeroSlewIfRequested(rise_slew) + forceZeroSlewIfRequested(fall_slew);
+      const SlewVal sum_slew = rise_slew + fall_slew;
       return getTimeBasedGlitchScalingRatioH(selected_glitch_pulse_width * vcd_.timeScale(), sum_slew);
     } else {
       return INVALID_N_TOGGLE_VAL;
@@ -367,7 +361,7 @@ Power::findInputInternalVal(
 
   Vertex* toggle_vertex = graph_->pinLoadVertex(toggle_pin);
   RiseFall* rf = rise_fall == RISE ? RiseFall::rise() : RiseFall::fall();
-  SlewVal slew = forceZeroSlewIfRequested(getSlew(toggle_vertex, rf, corner));
+  SlewVal slew = getSlew(toggle_vertex, rf, corner);
   if (delayInf(slew)) {
     *internal_energy = 0.0;
     return;
@@ -488,7 +482,7 @@ Power::findOutputInternalVal(
     vcd_value_to_int_map_.at(related_pin_vcd_values[related_pin_prev_event_idx].value(related_pin_value_bit)), 
     vcd_value_to_int_map_.at(related_pin_vcd_values[related_pin_event_idx].value(related_pin_value_bit))
   );
-  SlewVal input_slew = forceZeroSlewIfRequested(getSlew(related_vertex, from_rf == RISE ? RiseFall::rise() : RiseFall::fall(), corner));
+  SlewVal input_slew = getSlew(related_vertex, from_rf == RISE ? RiseFall::rise() : RiseFall::fall(), corner);
   if (!delayInf(input_slew)) {
     for (const InternalPower* pwr: internal_pwrs) {
       const LibertyPort *from_corner_port = pwr->relatedPort();
@@ -533,7 +527,7 @@ Power::getDefaultOutputPinInternalEnergyVal(
     const Pin* input_pin = pins.at(input_pin_idx);
     Vertex* input_vertex = graph_->pinLoadVertex(input_pin);
     for (RiseFall *from_rf : RiseFall::range()) {
-      SlewVal input_slew = forceZeroSlewIfRequested(getSlew(input_vertex, from_rf, corner));
+      SlewVal input_slew = getSlew(input_vertex, from_rf, corner);
       if (!delayInf(input_slew)) {
         for (const InternalPower* pwr: internal_pwrs) {
           const LibertyPort *from_corner_port = pwr->relatedPort();
@@ -561,43 +555,31 @@ Power::getDefaultOutputPinInternalEnergyVal(
 void
 Power::getStateIdx(
   const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map, 
-  const std::string& when,
-  const std::string& when_str_separator,
+  const FuncExpr* when,
   // Return values.
   std::vector<NStateVal>& matched_state_idxs
 ) const 
 {
-  StringVector when_pin_states;
-  split(when, when_str_separator, when_pin_states);
-
-  NStateVal matched_state_idx = 0;
-  std::unordered_set<std::string> used_ports;
-  for (auto& pin_state: when_pin_states) {
-    trim(pin_state);
-    VcdEventVal cur_pin_state = 1;
-    if (pin_state.substr(0, 1) == "!") {
-      cur_pin_state = 0;
-      pin_state = pin_state.substr(1);
-    }
-
-    // if (LOG_DEBUG_FLAG) {
-    //   LOG_DEBUG << pin_state << " idx: " << port_name_to_idx_map.at(pin_state);
-    // }
-    used_ports.insert(pin_state);
-    matched_state_idx += cur_pin_state * (1 << port_name_to_idx_map.at(pin_state));
+  matched_state_idxs.clear();
+  std::vector<VcdEventVal> when_pin_states;
+  if (!getWhenPinStates(when, port_name_to_idx_map, when_pin_states)) {
+    return;
   }
 
-  // std::vector<NStateVal> matched_state_idxs(1, matched_state_idx);
+  NStateVal matched_state_idx = 0;
+  for (size_t pin_idx = 0; pin_idx < when_pin_states.size(); ++pin_idx) {
+    if (when_pin_states[pin_idx] == 1) {
+      matched_state_idx |= NStateVal{1} << pin_idx;
+    }
+  }
+
   matched_state_idxs.push_back(matched_state_idx);
-  // like https://leetcode.cn/problems/letter-combinations-of-a-phone-number/
-  for (auto it = port_name_to_idx_map.begin(); it != port_name_to_idx_map.end(); ++it) {
-    if (!used_ports.count(it->first)) {
-      std::vector<NStateVal> tmp_state_idxs;
-      for (NStateVal tmp_state: matched_state_idxs) {
-        tmp_state_idxs.push_back(tmp_state);
-        tmp_state_idxs.push_back(tmp_state + (1 << it->second));
+  for (size_t pin_idx = 0; pin_idx < when_pin_states.size(); ++pin_idx) {
+    if (when_pin_states[pin_idx] == INVALID_VCD_EVENT_VAL) {
+      const size_t n_previous_states = matched_state_idxs.size();
+      for (size_t idx = 0; idx < n_previous_states; ++idx) {
+        matched_state_idxs.push_back(matched_state_idxs[idx] | (NStateVal{1} << pin_idx));
       }
-      matched_state_idxs = std::move(tmp_state_idxs);
     }
   }
 }

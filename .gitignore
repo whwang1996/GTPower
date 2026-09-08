@@ -28,5 +28,8 @@ examples/gcd_tb
 
 doc/._Sta.docx
 
+/test/OpenSTA-sample/res/
+/test/OpenSTA-sample/res-cpu/
+
 # Codex VS Code plugin may create an empty .codex file
 /.codex

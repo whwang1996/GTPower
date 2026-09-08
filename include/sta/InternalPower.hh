@@ -62,9 +62,6 @@ public:
   LibertyPort *port() const { return port_; }
   LibertyPort *relatedPort() const { return related_port_; }
   FuncExpr *when() const { return when_; }
-  const std::string& whenStr() const { return when_str_; }
-  const StringVector& whenStates() const { return when_states_; }
-  const StringVector& portNames() const { return port_names_; }
   const char *relatedPgPin() const { return related_pg_pin_; }
   // const InternalPowerModel *internalPowerModel(const RiseFall *rf) const { return models_[rf->index()]; }
   ConstTablePtr lookupTable(const RiseFall *rf) const;
@@ -77,9 +74,6 @@ protected:
   LibertyPort *port_;
   LibertyPort *related_port_;
   FuncExpr *when_;
-  std::string when_str_;
-  StringVector when_states_;
-  StringVector port_names_;
   const  char *related_pg_pin_;
   InternalPowerModel *models_[RiseFall::index_count];
 };

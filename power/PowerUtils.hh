@@ -8,7 +8,7 @@
 #include "StringUtil.hh"
 
 namespace sta {
-  class LeakagePower;
+  class FuncExpr;
   class InternalPower;
   class Vertex;
 }
@@ -43,14 +43,14 @@ findLeakageVal(
   PowerVal* leakage_val
 );
 
-void
-findLeakageVal(
-  const std::vector<std::string>& input_pin_states, 
-  const std::unordered_map<std::string, const sta::LeakagePower*>& when_str_to_leakage_power,
-  const bool default_leakage_exists,
-  const PowerVal default_leakage_power_val,
-  PowerVal* leakage_val,
-  std::string* input_state_annotation
+// Convert a conjunction to per-pin requirements (0, 1, or unconstrained).
+// A missing when is unconditional. Return false for an unsatisfiable condition;
+// report an error if the expression cannot be represented as one conjunction.
+bool
+getWhenPinStates(
+  const sta::FuncExpr* when,
+  const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
+  std::vector<VcdEventVal>& when_pin_states
 );
 
 bool
