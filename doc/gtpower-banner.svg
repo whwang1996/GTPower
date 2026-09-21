@@ -16,7 +16,7 @@
   <rect x="1" y="1" width="1198" height="258" rx="18" fill="url(#background)" stroke="#dce6ee"/>
   <path d="M58 57H100" stroke="#0d9488" stroke-width="4" stroke-linecap="round"/>
   <text x="56" y="135" fill="#15324f" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-2.5">GTPower</text>
-  <text x="59" y="178" fill="#48627a" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20">GPU-Accelerated Gate-Level Time-Based Power Analysis</text>
+  <text x="59" y="178" fill="#48627a" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20"><tspan font-weight="700" text-decoration="underline">G</tspan>PU-Accelerated Gate-Level <tspan font-weight="700" text-decoration="underline">T</tspan>ime-Based <tspan font-weight="700" text-decoration="underline">Power</tspan> Analysis</text>
   <path d="M744 57V203" stroke="#dce6ee"/>
 
   <g stroke="#9bb7c9" stroke-width="2" stroke-linecap="round">
