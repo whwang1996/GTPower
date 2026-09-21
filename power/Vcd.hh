@@ -26,7 +26,7 @@
 #include "Types.hh"
 #include "StaState.hh"
 
-namespace sta {
+namespace gtpower {
 
 using std::unordered_map;
 using std::max;
@@ -61,10 +61,10 @@ enum class VcdVarType {
   unknown
 };
 
-class Vcd : public StaState
+class Vcd : public sta::StaState
 {
 public:
-  Vcd(StaState *sta);
+  Vcd(sta::StaState *sta);
   Vcd(const Vcd &vcd);
   // Copy assignment.
   Vcd &operator=(const Vcd &vcd1);
@@ -169,4 +169,4 @@ private:
   int bus_width_;
 };
 
-}  // namespace sta
+}  // namespace gtpower

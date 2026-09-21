@@ -70,7 +70,9 @@
 //
 // transition_density = activity / clock_period
 
-namespace sta {
+namespace gtpower {
+
+using namespace sta;
 
 using std::abs;
 using std::isnormal;
@@ -255,7 +257,7 @@ Power::power(const Corner *corner,
     << " multi_thread_number: " << G_CONFIG.nums.multi_thread_number;
   
   // ProfilerStart("./log/cpu_time_based.prof");
-  utils::ScopedTimer cpu_power_analysis_timer("CPU Power Analysis");
+  ::utils::ScopedTimer cpu_power_analysis_timer("CPU Power Analysis");
   TIMERSTART(CPU_POWER_ANALYSIS);
   if (G_CONFIG.flags.enable_multi_threaded_cpu) {
     if (!G_CONFIG.flags.enable_time_based_analysis) {
@@ -387,7 +389,7 @@ void
 Power::printCellRes() const
 {
   std::ofstream out_file;
-  const std::string cell_res_path = utils::get_power_analysis_cell_res_path();
+  const std::string cell_res_path = ::utils::get_power_analysis_cell_res_path();
   out_file.open(cell_res_path.c_str(), std::ios::out);
   out_file << "cell" << G_CONFIG.strs.power_analysis_res_file_separator
     << "Internal_Power" << G_CONFIG.strs.power_analysis_res_file_separator << "Glitch_Internal_Power" << G_CONFIG.strs.power_analysis_res_file_separator
@@ -765,7 +767,7 @@ Power::evalBddActivity(DdNode *bdd,
 void
 Power::ensureActivities()
 {
-  utils::ScopedTimer ensure_act_timer("Ensure Activities");
+  ::utils::ScopedTimer ensure_act_timer("Ensure Activities");
   TIMERSTART(ENSURE_ACTIVITIES);
   // No need to propagate activites if global activity is set.
   if (!global_activity_.isSet()) {
@@ -811,7 +813,7 @@ Power::ensureActivities()
 void
 Power::reportResolvedTimeBasedPowerAnalysisWorkload()
 {
-  utils::ScopedTimer timer_report_resolved_time_based_power_analysis_workload(
+  ::utils::ScopedTimer timer_report_resolved_time_based_power_analysis_workload(
       "Report Resolved Time-Based Power Analysis Workload");
 
   size_t n_waveform_pin = 0;
@@ -1749,4 +1751,4 @@ PwrActivity::originName() const
   return pwr_activity_origin_map.find(origin_);
 }
 
-}  // namespace sta
+}  // namespace gtpower

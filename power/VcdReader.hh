@@ -18,21 +18,19 @@
 
 #include "Vcd.hh"
 
-namespace sta {
-
-class StaState;
+namespace gtpower {
 
 Vcd
 readVcdFile(const char *filename,
-            StaState *sta);
+            sta::StaState *sta);
 
 void
 reportVcdWaveforms(const char *filename,
-                   StaState *sta);
+                   sta::StaState *sta);
 
 void
 reportVcdVarValues(const char *filename,
                    const char *var_name,
-                   StaState *sta);
+                   sta::StaState *sta);
 
-}  // namespace sta
+}  // namespace gtpower

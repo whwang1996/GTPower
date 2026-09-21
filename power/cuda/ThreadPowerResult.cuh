@@ -2,6 +2,8 @@
 
 #include "Types.hh"
 
+namespace gtpower::cuda {
+
 struct ThreadPowerResult
 {
   PowerVal leakage_power = 0.0;
@@ -19,3 +21,5 @@ struct ThreadPowerResult
 
   }
 };
+
+}  // namespace gtpower::cuda

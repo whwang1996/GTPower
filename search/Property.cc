@@ -317,7 +317,7 @@ PropertyValue::PropertyValue(PathRefSeq *value) :
 {
 }
 
-PropertyValue::PropertyValue(PwrActivity *value) :
+PropertyValue::PropertyValue(gtpower::PwrActivity *value) :
   type_(type_pwr_activity),
   pwr_activity_(*value),
   unit_(nullptr)
@@ -777,7 +777,7 @@ getProperty(const Port *port,
   else if (stringEqual(property, "activity")) {
     const Instance *top_inst = network->topInstance();
     const Pin *pin = network->findPin(top_inst, port);
-    PwrActivity activity = sta->findClkedActivity(pin);
+    gtpower::PwrActivity activity = sta->findClkedActivity(pin);
     return PropertyValue(&activity);
   }
 
@@ -993,7 +993,7 @@ getProperty(const Pin *pin,
     return PropertyValue(&clks);
   }
   else if (stringEqual(property, "activity")) {
-    PwrActivity activity = sta->findClkedActivity(pin);
+    gtpower::PwrActivity activity = sta->findClkedActivity(pin);
     return PropertyValue(&activity);
   }
 

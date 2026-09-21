@@ -44,12 +44,12 @@ set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(STA_HOME ${PROJECT_SOURCE_DIR})
-message(STATUS "STA version: ${PROJECT_VERSION}")
+message(STATUS "OpenSTA base version: ${PROJECT_VERSION}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC STA_GIT_SHA1)
-message(STATUS "STA git sha: ${STA_GIT_SHA1}")
+message(STATUS "GTPower git sha: ${STA_GIT_SHA1}")
 
 # Default to bulding optimnized/release executable.
 if(NOT CMAKE_BUILD_TYPE)
@@ -660,21 +660,21 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${STA_HOME}/app)
 # Note executable and lib name cannot be the same because
 # on osx something is case insensitive. Using STA for the
 # lib name results in "No rule to make target ../depend.
-add_executable(sta app/Main.cc)
-target_link_libraries(sta
+add_executable(gtpower app/Main.cc)
+target_link_libraries(gtpower
   sta_swig
   OpenSTA
   CUDA_POWER_ANALYSIS
 )
 
-message(STATUS "STA executable: ${STA_HOME}/app/sta")
+message(STATUS "GTPower executable: ${STA_HOME}/app/gtpower")
 
 ################################################################
 # Install
 # cmake .. -DCMAKE_INSTALL_PREFIX=<prefix_path>
 
 # executable
-install(TARGETS sta DESTINATION bin)
+install(TARGETS gtpower DESTINATION bin)
 
 # library
 install(TARGETS OpenSTA DESTINATION lib)

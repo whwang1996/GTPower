@@ -35,7 +35,9 @@
 #include "Log.hh"
 #include "ScopedTimer.hh"
 
-namespace sta {
+namespace gtpower {
+
+using namespace sta;
 
 using std::abs;
 using std::min;
@@ -136,7 +138,7 @@ ReadVcdActivities::ReadVcdActivities(const char *filename,
 void
 ReadVcdActivities::readActivities()
 {
-  utils::ScopedTimer timer_read_act("Read Activities");
+  ::utils::ScopedTimer timer_read_act("Read Activities");
   TIMERSTART(READ_ACTIVITIES);
 
   clk_period_ = INF;
@@ -325,7 +327,7 @@ ReadVcdActivities::nCycle(VcdEventTime start_time,
 void
 ReadVcdActivities::reportWaveformStat()
 {
-  utils::ScopedTimer timer_report_waveform_activity_factor("Report Waveform Activity Factor");
+  ::utils::ScopedTimer timer_report_waveform_activity_factor("Report Waveform Activity Factor");
 
   const auto& vars = vcd_.vars();
   const auto& time_intervals = vcd_.timeIntervals();
@@ -665,4 +667,4 @@ ReadVcdActivities::checkClkPeriod(const Pin *pin,
   }
 }
 
-}  // namespace sta
+}  // namespace gtpower

@@ -18,16 +18,41 @@
 
 #include <tcl.h>
 #include <cstdlib>
+#include <string>
 #include <sys/stat.h>
 
 #include "Machine.hh"
 #include "StringUtil.hh"
 #include "Vector.hh"
 #include "Sta.hh"
+#include "StaConfig.hh"
 #include "Log.hh"
 #include "GlobalConfig.hh"
 
 namespace sta {
+
+const char *
+splashMessage()
+{
+  static const std::string message = std::string(R"(
+   ____ _____ ____
+  / ___|_   _|  _ \ _____      _____ _ __
+ | |  _  | | | |_) / _ \ \ /\ / / _ \ '__|
+ | |_| | | | |  __/ (_) \ V  V /  __/ |
+  \____| |_| |_|   \___/ \_/\_/ \___|_|
+
+ GPU-Accelerated Gate-Level Time-Based Power Analysis
+
+GTPower )") + std::string(STA_GIT_SHA1).substr(0, 10)
+    + " - based on OpenSTA " + STA_VERSION + R"(
+OpenSTA Copyright (c) 2024, Parallax Software, Inc.
+License GPLv3: GNU GPL version 3 <http://gnu.org/licenses/gpl.html>
+
+This is free software, and you are free to change and redistribute it
+under certain conditions; type `show_copying' for details.
+This program comes with ABSOLUTELY NO WARRANTY; for details type `show_warranty'.)";
+  return message.c_str();
+}
 
 void
 PrintArguments(int argc, char* argv[]) 

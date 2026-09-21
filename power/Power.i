@@ -29,7 +29,7 @@ using namespace sta;
 %inline %{
 
 static void
-pushPowerResultFloats(PowerResult &power,
+pushPowerResultFloats(gtpower::PowerResult &power,
 		      FloatSeq &powers)
 {
   powers.push_back(power.internal());
@@ -42,7 +42,7 @@ FloatSeq
 design_power(const Corner *corner)
 {
   cmdLinkedNetwork();
-  PowerResult total, sequential, combinational, clock, macro, pad;
+  gtpower::PowerResult total, sequential, combinational, clock, macro, pad;
   Sta::sta()->power(corner, total, sequential, combinational, clock, macro, pad);
   FloatSeq powers;
   pushPowerResultFloats(total, powers);
@@ -60,7 +60,7 @@ instance_power(Instance *inst,
 {
   cmdLinkedNetwork();
   Sta *sta = Sta::sta();
-  PowerResult power = sta->power(inst, corner);
+  gtpower::PowerResult power = sta->power(inst, corner);
   FloatSeq powers;
   powers.push_back(power.internal());
   powers.push_back(power.switching());
@@ -73,7 +73,7 @@ void
 set_power_global_activity(float activity,
 			  float duty)
 {
-  Power *power = Sta::sta()->power();
+  gtpower::Power *power = Sta::sta()->power();
   power->setGlobalActivity(activity, duty);
 }
 
@@ -81,7 +81,7 @@ void
 set_power_input_activity(float activity,
 			 float duty)
 {
-  Power *power = Sta::sta()->power();
+  gtpower::Power *power = Sta::sta()->power();
   return power->setInputActivity(activity, duty);
 }
 
@@ -90,7 +90,7 @@ set_power_input_port_activity(const Port *input_port,
 			      float activity,
 			      float duty)
 {
-  Power *power = Sta::sta()->power();
+  gtpower::Power *power = Sta::sta()->power();
   return power->setInputPortActivity(input_port, activity, duty);
 }
 
@@ -99,8 +99,8 @@ set_power_pin_activity(const Pin *pin,
 		       float activity,
 		       float duty)
 {
-  Power *power = Sta::sta()->power();
-  return power->setUserActivity(pin, activity, duty, PwrActivityOrigin::user);
+  gtpower::Power *power = Sta::sta()->power();
+  return power->setUserActivity(pin, activity, duty, gtpower::PwrActivityOrigin::user);
 }
 
 void
@@ -109,14 +109,14 @@ read_vcd_activities(const char *filename,
 {
   Sta *sta = Sta::sta();
   cmdLinkedNetwork();
-  readVcdActivities(filename, scope, sta);
+  gtpower::readVcdActivities(filename, scope, sta);
 }
 
 void
 report_vcd_waveforms(const char *filename)
 {
   Sta *sta = Sta::sta();
-  reportVcdWaveforms(filename, sta);
+  gtpower::reportVcdWaveforms(filename, sta);
 }
 
 // debugging
@@ -125,7 +125,7 @@ report_vcd_var_values(const char *filename,
                       const char *var_name)
 {
   Sta *sta = Sta::sta();
-  reportVcdVarValues(filename, var_name, sta);
+  gtpower::reportVcdVarValues(filename, var_name, sta);
 }
 
 %} // inline

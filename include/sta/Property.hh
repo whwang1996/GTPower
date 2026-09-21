@@ -70,7 +70,7 @@ public:
   PropertyValue(ClockSeq *value);
   PropertyValue(ClockSet *value);
   PropertyValue(PathRefSeq *value);
-  PropertyValue(PwrActivity *value);
+  PropertyValue(gtpower::PwrActivity *value);
   // Copy constructor.
   PropertyValue(const PropertyValue &props);
   // Move constructor.
@@ -96,7 +96,7 @@ public:
   const Clock *clock() const { return clk_; }
   ClockSeq *clocks() const { return clks_; }
   PathRefSeq *pathRefs() const { return path_refs_; }
-  PwrActivity pwrActivity() const { return pwr_activity_; }
+  gtpower::PwrActivity pwrActivity() const { return pwr_activity_; }
 
   // Copy assignment.
   PropertyValue &operator=(const PropertyValue &);
@@ -122,7 +122,7 @@ private:
     const Clock *clk_;
     ClockSeq *clks_;
     PathRefSeq *path_refs_;
-    PwrActivity pwr_activity_;
+    gtpower::PwrActivity pwr_activity_;
   };
   const Unit *unit_;
 };

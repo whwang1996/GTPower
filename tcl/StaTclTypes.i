@@ -1530,7 +1530,7 @@ using namespace sta;
   }
     break;
   case PropertyValue::Type::type_pwr_activity: {
-    PwrActivity activity = value.pwrActivity();
+    gtpower::PwrActivity activity = value.pwrActivity();
     Tcl_Obj *list = Tcl_NewListObj(0, nullptr);
     Tcl_Obj *obj;
     const char *str;

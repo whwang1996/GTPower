@@ -17,7 +17,7 @@
 # Regression variables.
 
 # Application program to run tests on.
-set app "sta"
+set app "gtpower"
 set sta_dir [file dirname $test_dir]
 set app_path [file join $sta_dir "app" $app]
 # Application options.

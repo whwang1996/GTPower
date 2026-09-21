@@ -9,8 +9,8 @@
 #include "CudaPowerThreadAllocStats.hh"
 #include "Gate.cuh"
 
-namespace sta {
-namespace power {
+namespace gtpower {
+namespace cuda {
 
 // ----------------------------- numeric helpers -----------------------------
 
@@ -48,7 +48,7 @@ static inline double percentile(std::vector<double> v, double p) {
 // ----------------------------- auto n_cycle_per_thread (gate-specific) -----------------------------
 
 static inline NPeriodVal compute_n_cycle_per_thread_by_event_count(
-  const sta::power::Gate* gate,
+  const gtpower::cuda::Gate* gate,
   const NPeriodVal n_cycle,
   const NThreadVal threads_target,
   const NEeventVal E_target
@@ -77,7 +77,7 @@ static inline NPeriodVal compute_n_cycle_per_thread_by_event_count(
 // ----------------------------- collect stats -----------------------------
 
 ThreadAllocSummary collect_cycle_partition_thread_alloc_stats(
-  const std::vector<sta::power::Gate*>& gates,
+  const std::vector<gtpower::cuda::Gate*>& gates,
   VcdEventTime interval_start_time,
   VcdEventTime interval_end_time,
   VcdEventTime vcd_time_unit_per_cycle,
@@ -106,7 +106,7 @@ ThreadAllocSummary collect_cycle_partition_thread_alloc_stats(
   dist_n_event.reserve(gates.size());
 
   for (NGateVal gate_idx = 0; gate_idx < static_cast<NGateVal>(gates.size()); ++gate_idx) {
-    const sta::power::Gate* g = gates[gate_idx];
+    const gtpower::cuda::Gate* g = gates[gate_idx];
 
     const size_t n_event_sz = std::accumulate(
       g->pin_waveform_sizes,
@@ -217,5 +217,5 @@ void logThreadAllocSummaryRound(
     << " sparse_H_search_active=" << s.sparse_H_search_active;
 }
 
-}  // namespace power
-}  // namespace sta
+}  // namespace cuda
+}  // namespace gtpower

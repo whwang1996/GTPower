@@ -3,8 +3,8 @@
 
 #include "Vcd.hh"
 
-namespace utils {
-int getVarBusWidth(const sta::VcdVar* var, const sta::Vcd& vcd) {
+namespace gtpower::utils {
+int getVarBusWidth(const gtpower::VcdVar* var, const gtpower::Vcd& vcd) {
   const auto& values = vcd.values(var);
   if (values.size() == 0) {
     return 0;
@@ -15,9 +15,9 @@ int getVarBusWidth(const sta::VcdVar* var, const sta::Vcd& vcd) {
   }
 }
 
-size_t getTotalBusWidthOfAllVars(const sta::Vcd& vcd) {
+size_t getTotalBusWidthOfAllVars(const gtpower::Vcd& vcd) {
   size_t total_bus_width = 0;
-  for (const sta::VcdVar* var: vcd.vars()) {
+  for (const gtpower::VcdVar* var: vcd.vars()) {
     total_bus_width += getVarBusWidth(var, vcd);
   }
 

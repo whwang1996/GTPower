@@ -46,7 +46,7 @@ Files:
 - `examples/sky130_hd.v`
 - `examples/sky130_hd_primitives.v`
 - `examples/sky130hd_tt.lib`
-- `test/OpenSTA-sample/data/sky130hd_tt.lib`
+- `test/gcd/data/sky130hd_tt.lib`
 
 Upstream library:
 [skywater-pdk-libs-sky130_fd_sc_hd](https://github.com/google/skywater-pdk-libs-sky130_fd_sc_hd).

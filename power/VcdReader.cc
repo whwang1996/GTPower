@@ -30,7 +30,9 @@
 #include "ScopedTimer.hh"
 #include "GlobalConfig.hh"
 
-namespace sta {
+namespace gtpower {
+
+using namespace sta;
 
 using std::isspace;
 
@@ -80,7 +82,7 @@ readVcdFile(const char *filename,
 Vcd
 VcdReader::read(const char *filename)
 {
-  utils::ScopedTimer timer_read_vcd("Read VCD");
+  ::utils::ScopedTimer timer_read_vcd("Read VCD");
   TIMERSTART(READ_VCD);
   Vcd vcd(this);
   vcd_ = &vcd;
@@ -454,4 +456,4 @@ reportVcdVarValues(const char *filename,
   }
 }
 
-}  // namespace sta
+}  // namespace gtpower

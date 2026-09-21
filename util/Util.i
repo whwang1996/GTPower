@@ -19,6 +19,7 @@
 %{
 
 #include "Sta.hh"
+#include "StaMain.hh"
 #include "StaConfig.hh"  // STA_VERSION
 #include "Stats.hh"
 #include "Report.hh"
@@ -51,6 +52,12 @@ const char *
 git_sha1()
 {
   return STA_GIT_SHA1;
+}
+
+const char *
+splash_message()
+{
+  return splashMessage();
 }
 
 // Elapsed run time (in seconds).
@@ -529,5 +536,4 @@ fuzzy_equal(float value1,
 // Object Methods
 //
 ////////////////////////////////////////////////////////////////
-
 

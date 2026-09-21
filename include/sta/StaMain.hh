@@ -47,6 +47,9 @@ evalTclInit(Tcl_Interp *interp,
 char *
 unencode(const char *inits[]);
 
+const char *
+splashMessage();
+
 void
 PrintArguments(int argc, 
 		char* argv[]);

@@ -11,8 +11,8 @@ namespace utils::cuda {
   class TwoDimensionalLUTPair;
 }
 
-namespace sta {
-namespace power {
+namespace gtpower {
+namespace cuda {
   class Gate;
   class Event;
 }
@@ -20,8 +20,8 @@ namespace power {
 class CudaPower : public Power
 {
 public:
-  CudaPower(StaState *sta);
-  void power(const Corner *corner,
+  CudaPower(sta::StaState *sta);
+  void power(const sta::Corner *corner,
              // Return values.
              PowerResult &total,
              PowerResult &sequential,
@@ -71,7 +71,7 @@ protected:
     NPeriodVal *cycle_boundary
   ) const;
   NEeventVal getAccuEventCountOfAllGates(VcdEventTime time) const;
-  void initGateData(VcdEventTime start_time, VcdEventTime end_time, const Corner *corner, const DcalcAnalysisPt *dcalc_ap);
+  void initGateData(VcdEventTime start_time, VcdEventTime end_time, const sta::Corner *corner, const sta::DcalcAnalysisPt *dcalc_ap);
   void copyGateDataToDeviceSide();
   void getGateWaveformRangeSingleThread(VcdEventTime start_time, VcdEventTime end_time, std::vector<NEeventVal>& h_global_pin_waveform_starts, std::vector<NEeventVal>& h_global_pin_waveform_ends);
   void getGateWaveformRangeMultiThread(VcdEventTime start_time, VcdEventTime end_time, std::vector<NEeventVal>& h_global_pin_waveform_starts, std::vector<NEeventVal>& h_global_pin_waveform_ends);
@@ -79,8 +79,8 @@ protected:
   void copyWaveformToDeviceSide();
   // ------------------------------end of time inteval scheduling------------------------------
   void getWaveform(
-    const Instance* inst,
-    const std::vector<const Pin *>& pins,
+    const sta::Instance* inst,
+    const std::vector<const sta::Pin *>& pins,
     VcdEventTime start_time, 
     VcdEventTime end_time,
     // Return values.
@@ -91,12 +91,12 @@ protected:
   );
   struct InternalPowerData
   {
-    std::vector<utils::cuda::OneDimensionalLUTPair**> input_ports_internal_power_LUTs;
+    std::vector<::utils::cuda::OneDimensionalLUTPair**> input_ports_internal_power_LUTs;
     std::vector<NStateVal> input_ports_n_internal_power_LUTs_index_by_order;
-    std::vector<utils::cuda::OneDimensionalLUTPair**> input_ports_internal_power_LUTs_index_by_order;
-    std::vector<utils::cuda::TwoDimensionalLUTPair***> output_ports_internal_power_LUTs;
+    std::vector<::utils::cuda::OneDimensionalLUTPair**> input_ports_internal_power_LUTs_index_by_order;
+    std::vector<::utils::cuda::TwoDimensionalLUTPair***> output_ports_internal_power_LUTs;
     std::vector<NStateVal*> output_ports_n_internal_power_LUTs_index_by_order;
-    std::vector<utils::cuda::TwoDimensionalLUTPair***> output_ports_internal_power_LUTs_index_by_order;
+    std::vector<::utils::cuda::TwoDimensionalLUTPair***> output_ports_internal_power_LUTs_index_by_order;
   };
   struct LeakagePowerData
   {
@@ -105,47 +105,47 @@ protected:
     bool default_leakage_exists = false;
   };
   const LeakagePowerData& getLeakagePowerData(
-    const LibertyCell *cell,
-    const LibertyCell *corner_cell,
+    const sta::LibertyCell *cell,
+    const sta::LibertyCell *corner_cell,
     NPinVal n_pin,
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map
   );
   const InternalPowerData& getInternalPower(
-    const Instance *inst, 
-    const LibertyCell *corner_cell, 
-    const DcalcAnalysisPt *dcalc_ap, 
+    const sta::Instance *inst, 
+    const sta::LibertyCell *corner_cell, 
+    const sta::DcalcAnalysisPt *dcalc_ap, 
     const NPinVal n_pin,
-    const std::vector<const Pin *>& pins,
+    const std::vector<const sta::Pin *>& pins,
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map
   );
   void getInputInternalPower(
-    const LibertyCell *corner_cell, 
-    const LibertyPort *port, 
-    const DcalcAnalysisPt *dcalc_ap, 
+    const sta::LibertyCell *corner_cell, 
+    const sta::LibertyPort *port, 
+    const sta::DcalcAnalysisPt *dcalc_ap, 
     const NPinVal n_pin,
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
     // Return values.
-    utils::cuda::OneDimensionalLUTPair**& d_cur_port_internal_power_LUTs,
+    ::utils::cuda::OneDimensionalLUTPair**& d_cur_port_internal_power_LUTs,
     NStateVal& n_cur_port_internal_power_LUTs_indexed_by_order,
-    utils::cuda::OneDimensionalLUTPair**& d_cur_port_internal_power_LUTs_indexed_by_order
+    ::utils::cuda::OneDimensionalLUTPair**& d_cur_port_internal_power_LUTs_indexed_by_order
   ) const;
   void getOutputInternalPower(
-    const Instance *inst,
-    const LibertyCell *corner_cell, 
-    const LibertyPort *port, 
-    const DcalcAnalysisPt *dcalc_ap,
+    const sta::Instance *inst,
+    const sta::LibertyCell *corner_cell, 
+    const sta::LibertyPort *port, 
+    const sta::DcalcAnalysisPt *dcalc_ap,
     const NPinVal n_pin,
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
     // Return values.
-    utils::cuda::TwoDimensionalLUTPair***& d_cur_port_internal_power_LUTs,
+    ::utils::cuda::TwoDimensionalLUTPair***& d_cur_port_internal_power_LUTs,
     NStateVal*& d_cur_port_n_internal_power_LUTs_indexed_by_order,
-    utils::cuda::TwoDimensionalLUTPair***& d_cur_port_internal_power_LUTs_indexed_by_order
+    ::utils::cuda::TwoDimensionalLUTPair***& d_cur_port_internal_power_LUTs_indexed_by_order
   ) const;
   void getDelay(
-    const std::vector<const Pin *>& pins, 
+    const std::vector<const sta::Pin *>& pins, 
     NPinVal n_pin, 
     NPinVal n_input_pin, 
-    const DcalcAnalysisPt *dcalc_ap,
+    const sta::DcalcAnalysisPt *dcalc_ap,
     // Return values.
     std::vector<DelayVal>& global_cell_arc_delays
   ) const;
@@ -179,16 +179,16 @@ private:
   VcdEventTime max_event_time_;
   EventTimeVal vcd_time_scale_;
   VcdEventTime vcd_time_unit_per_cycle_;
-  std::unordered_map<const Instance*, std::vector<const Pin *>> inst_to_pins_;
+  std::unordered_map<const sta::Instance*, std::vector<const sta::Pin *>> inst_to_pins_;
   std::unordered_map<const VcdValue*, NEeventVal> vcd_values_ptr_to_n_event_;
   std::vector<std::pair<const VcdValue*, int>> vcd_values_bit_pair_list_;
-  std::unordered_map<const Instance*, PowerResult> inst_to_res_;
+  std::unordered_map<const sta::Instance*, PowerResult> inst_to_res_;
 
   //--------------------events and gates-----------------------
-  sta::power::Event* events_;  // array of event
-  sta::power::Event* d_events_;
-  std::vector<sta::power::Gate*> h_multiple_output_gates_;
-  sta::power::Gate* d_multiple_output_gates_;
+  gtpower::cuda::Event* events_;  // array of event
+  gtpower::cuda::Event* d_events_;
+  std::vector<gtpower::cuda::Gate*> h_multiple_output_gates_;
+  gtpower::cuda::Gate* d_multiple_output_gates_;
   //--------------------end of events and gates-----------------------
 
   //--------------------for leakage and internal-----------------------
@@ -219,14 +219,14 @@ private:
 
   NGateVal* block_corr_gate_idxes_for_event_partition_;
   NGateVal* block_corr_gate_idxes_for_cycle_partition_;
-  std::unordered_map<const LibertyPort*, utils::cuda::OneDimensionalLUTPair**> input_port_to_internal_luts_map_;
-  std::unordered_map<const LibertyPort*, NStateVal> input_port_to_n_internal_LUTs_indexed_by_order_map_;
-  std::unordered_map<const LibertyPort*, utils::cuda::OneDimensionalLUTPair**> input_port_to_internal_luts_indexed_by_order_map_;
-  std::unordered_map<const LibertyPort*, utils::cuda::TwoDimensionalLUTPair***> output_port_to_internal_luts_map_;
-  std::unordered_map<const LibertyPort*, NStateVal*> output_port_to_n_internal_LUTs_indexed_by_order_map_;
-  std::unordered_map<const LibertyPort*, utils::cuda::TwoDimensionalLUTPair***> output_port_to_internal_luts_indexed_by_order_map_;
-  std::unordered_map<const LibertyCell*, LeakagePowerData> cell_to_leakage_power_data_;
-  std::unordered_map<const LibertyCell*, InternalPowerData> cell_to_internal_power_data_;
+  std::unordered_map<const sta::LibertyPort*, ::utils::cuda::OneDimensionalLUTPair**> input_port_to_internal_luts_map_;
+  std::unordered_map<const sta::LibertyPort*, NStateVal> input_port_to_n_internal_LUTs_indexed_by_order_map_;
+  std::unordered_map<const sta::LibertyPort*, ::utils::cuda::OneDimensionalLUTPair**> input_port_to_internal_luts_indexed_by_order_map_;
+  std::unordered_map<const sta::LibertyPort*, ::utils::cuda::TwoDimensionalLUTPair***> output_port_to_internal_luts_map_;
+  std::unordered_map<const sta::LibertyPort*, NStateVal*> output_port_to_n_internal_LUTs_indexed_by_order_map_;
+  std::unordered_map<const sta::LibertyPort*, ::utils::cuda::TwoDimensionalLUTPair***> output_port_to_internal_luts_indexed_by_order_map_;
+  std::unordered_map<const sta::LibertyCell*, LeakagePowerData> cell_to_leakage_power_data_;
+  std::unordered_map<const sta::LibertyCell*, InternalPowerData> cell_to_internal_power_data_;
 
   PowerVal *gate_leakage_powers_;
   PowerVal *gate_internal_powers_;
@@ -254,4 +254,4 @@ private:
   //--------------------end of for switching-----------------------
 
 };
-}  // end of namespace sta
+}  // end of namespace gtpower

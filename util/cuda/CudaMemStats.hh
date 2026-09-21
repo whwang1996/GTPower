@@ -47,4 +47,4 @@ private:
 
 }  // namespace utils::cuda
 
-#define CUDA_MEM_STATS utils::cuda::CudaMemStats::instance()
+#define CUDA_MEM_STATS ::utils::cuda::CudaMemStats::instance()
