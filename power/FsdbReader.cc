@@ -7,7 +7,9 @@
 #include "StringUtil.hh"
 #include "PowerUtils.hh"
 
-namespace sta {
+namespace gtpower {
+
+using namespace sta;
 
 FsdbReader::FsdbReader(StaState* sta, PeriodVal clk_period) :
   StaState(sta),
@@ -34,7 +36,7 @@ FsdbReader::read(const char* file_name)
   getFsdbInfo();
   readFsdbHeader();
 
-  utils::ScopedTimer timer_read_fsdb("Read FSDB");
+  ::utils::ScopedTimer timer_read_fsdb("Read FSDB");
   std::vector<NEeventVal> cyc_idx_to_n_event(n_cycle_, 0);
   if (G_CONFIG.flags.enable_multi_threaded_cpu) {
     LOG_INFO << "Starting multi threaded FSDB parser...";
@@ -409,7 +411,7 @@ FsdbReader::readVarChanges(ffrObject* ffr_obj, NVarVal start_var_id, NVarVal end
         int64_t bus_value = strtol(vc_buffer, nullptr, 2);
         vcd_->varAppendBusValue(var_id_str, cur_time, bus_value, bit_width);  // TODO batch append instead one by one
       }
-      cyc_idx_to_n_event.at(power::utils::clkedWaveformIdx(cur_time, vcd_->timeScale(), clk_period_)) += bit_width;
+      cyc_idx_to_n_event.at(gtpower::utils::clkedWaveformIdx(cur_time, vcd_->timeScale(), clk_period_)) += bit_width;
     } while (FSDB_RC_SUCCESS == vc_trvs_hdl->ffrGotoNextVC());
     vc_trvs_hdl->ffrFree();
   }
@@ -491,4 +493,4 @@ readFsdbFile(const char* file_name,
   return reader.read(file_name);
 }
 
-}  // namespace sta
+}  // namespace gtpower

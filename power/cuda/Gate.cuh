@@ -13,19 +13,20 @@
 
 namespace sta{
   class Instance;
+  class LibertyCell;
 }
 
-namespace sta::power {
-inline std::unordered_map<const LibertyCell*, PowerVal*> cell_to_leakage_powers;
-inline std::unordered_map<const LibertyCell*, utils::cuda::OneDimensionalLUTPair***> cell_to_input_pin_internal_power_LUTs;
-inline std::unordered_map<const LibertyCell*, NStateVal*> cell_to_n_input_pin_internal_power_LUTs_indexed_by_order;
-inline std::unordered_map<const LibertyCell*, utils::cuda::OneDimensionalLUTPair***> cell_to_input_pin_internal_power_LUTs_indexed_by_order;
-inline std::unordered_map<const LibertyCell*, utils::cuda::TwoDimensionalLUTPair****> cell_to_output_pin_internal_power_LUTs;
-inline std::unordered_map<const LibertyCell*, NStateVal**> cell_to_n_output_pin_internal_power_LUTs_indexed_by_order;
-inline std::unordered_map<const LibertyCell*, utils::cuda::TwoDimensionalLUTPair****> cell_to_output_pin_internal_power_LUTs_indexed_by_order;
+namespace gtpower::cuda {
+inline std::unordered_map<const sta::LibertyCell*, PowerVal*> cell_to_leakage_powers;
+inline std::unordered_map<const sta::LibertyCell*, ::utils::cuda::OneDimensionalLUTPair***> cell_to_input_pin_internal_power_LUTs;
+inline std::unordered_map<const sta::LibertyCell*, NStateVal*> cell_to_n_input_pin_internal_power_LUTs_indexed_by_order;
+inline std::unordered_map<const sta::LibertyCell*, ::utils::cuda::OneDimensionalLUTPair***> cell_to_input_pin_internal_power_LUTs_indexed_by_order;
+inline std::unordered_map<const sta::LibertyCell*, ::utils::cuda::TwoDimensionalLUTPair****> cell_to_output_pin_internal_power_LUTs;
+inline std::unordered_map<const sta::LibertyCell*, NStateVal**> cell_to_n_output_pin_internal_power_LUTs_indexed_by_order;
+inline std::unordered_map<const sta::LibertyCell*, ::utils::cuda::TwoDimensionalLUTPair****> cell_to_output_pin_internal_power_LUTs_indexed_by_order;
 
 struct Gate {
-  const Instance *inst;  // only for host side debug
+  const sta::Instance *inst;  // only for host side debug
   bool is_logic;
 
   PowerVal *leakage_powers;  // array of leakage power values indexed by binary encoding of when states
@@ -72,22 +73,22 @@ struct Gate {
 
   // internal power for input pins
   // 2-D array of LUT pointers, the outter loop is input pin, the inner loop is LUTs indexed by binary encoding of when states
-  utils::cuda::OneDimensionalLUTPair*** input_pin_internal_power_LUTs;
-  // utils::cuda::OneDimensionalLUTPair** input_pin_default_internal_power_LUTs;
+  ::utils::cuda::OneDimensionalLUTPair*** input_pin_internal_power_LUTs;
+  // ::utils::cuda::OneDimensionalLUTPair** input_pin_default_internal_power_LUTs;
   NStateVal* n_input_pin_internal_power_LUTs_indexed_by_order;
-  utils::cuda::OneDimensionalLUTPair*** input_pin_internal_power_LUTs_indexed_by_order;
+  ::utils::cuda::OneDimensionalLUTPair*** input_pin_internal_power_LUTs_indexed_by_order;
 
   // internal power for output pins
   // 3-D array of LUT pointers, the outter loop is output pin, the middle loop is related pins, and the inner loop is LUTs indexed by binary encoding of when states
-  utils::cuda::TwoDimensionalLUTPair**** output_pin_internal_power_LUTs;
-  // utils::cuda::TwoDimensionalLUTPair*** output_pin_default_internal_power_LUTs;
+  ::utils::cuda::TwoDimensionalLUTPair**** output_pin_internal_power_LUTs;
+  // ::utils::cuda::TwoDimensionalLUTPair*** output_pin_default_internal_power_LUTs;
   NStateVal** n_output_pin_internal_power_LUTs_indexed_by_order;  // the outter loop is output pin, the inner loop is related pin
-  utils::cuda::TwoDimensionalLUTPair**** output_pin_internal_power_LUTs_indexed_by_order;
+  ::utils::cuda::TwoDimensionalLUTPair**** output_pin_internal_power_LUTs_indexed_by_order;
 
-  explicit Gate(const Instance *_inst, const LibertyCell *corner_cell, bool _is_logic,
+  explicit Gate(const sta::Instance *_inst, const sta::LibertyCell *corner_cell, bool _is_logic,
     const std::vector<PowerVal>& _leakage_powers, bool _default_leakage_exists, PowerVal _default_leakage_power_val,
-    const std::vector<utils::cuda::OneDimensionalLUTPair**>& h_input_ports_internal_power_LUTs, const std::vector<NStateVal>& h_input_ports_n_internal_power_LUTs_index_by_order, const std::vector<utils::cuda::OneDimensionalLUTPair**>& h_input_ports_internal_power_LUTs_index_by_order,
-    const std::vector<utils::cuda::TwoDimensionalLUTPair***>& h_output_ports_internal_power_LUTs, const std::vector<NStateVal*>& h_output_ports_n_internal_power_LUTs_index_by_order, const std::vector<utils::cuda::TwoDimensionalLUTPair***>& h_output_ports_internal_power_LUTs_index_by_order,
+    const std::vector<::utils::cuda::OneDimensionalLUTPair**>& h_input_ports_internal_power_LUTs, const std::vector<NStateVal>& h_input_ports_n_internal_power_LUTs_index_by_order, const std::vector<::utils::cuda::OneDimensionalLUTPair**>& h_input_ports_internal_power_LUTs_index_by_order,
+    const std::vector<::utils::cuda::TwoDimensionalLUTPair***>& h_output_ports_internal_power_LUTs, const std::vector<NStateVal*>& h_output_ports_n_internal_power_LUTs_index_by_order, const std::vector<::utils::cuda::TwoDimensionalLUTPair***>& h_output_ports_internal_power_LUTs_index_by_order,
     NPinVal _n_pin, NPinVal _n_input_pin, NPinVal _n_output_pin, NPinVal _output_pin_idx
   ) :
     inst(_inst),
@@ -125,9 +126,9 @@ struct Gate {
       input_pin_internal_power_LUTs = cell_to_input_pin_internal_power_LUTs.at(corner_cell);
     } else {
       assert(h_input_ports_internal_power_LUTs.size() == n_input_pin);
-      CHECK_CUDA_RUNTIME(cudaMalloc(&input_pin_internal_power_LUTs, sizeof(utils::cuda::OneDimensionalLUTPair**) * h_input_ports_internal_power_LUTs.size()));
-      CHECK_CUDA_RUNTIME(cudaMemcpy(input_pin_internal_power_LUTs, h_input_ports_internal_power_LUTs.data(), sizeof(utils::cuda::OneDimensionalLUTPair**) * h_input_ports_internal_power_LUTs.size(), cudaMemcpyHostToDevice));
-      CUDA_MEM_STATS.add(utils::cuda::CudaMemStats::Category::bsim_lut_index, sizeof(utils::cuda::OneDimensionalLUTPair**) * h_input_ports_internal_power_LUTs.size());
+      CHECK_CUDA_RUNTIME(cudaMalloc(&input_pin_internal_power_LUTs, sizeof(::utils::cuda::OneDimensionalLUTPair**) * h_input_ports_internal_power_LUTs.size()));
+      CHECK_CUDA_RUNTIME(cudaMemcpy(input_pin_internal_power_LUTs, h_input_ports_internal_power_LUTs.data(), sizeof(::utils::cuda::OneDimensionalLUTPair**) * h_input_ports_internal_power_LUTs.size(), cudaMemcpyHostToDevice));
+      CUDA_MEM_STATS.add(::utils::cuda::CudaMemStats::Category::bsim_lut_index, sizeof(::utils::cuda::OneDimensionalLUTPair**) * h_input_ports_internal_power_LUTs.size());
       cell_to_input_pin_internal_power_LUTs[corner_cell] = input_pin_internal_power_LUTs;
     }
     if (h_input_ports_internal_power_LUTs_index_by_order.empty()) {
@@ -141,10 +142,10 @@ struct Gate {
       assert(h_input_ports_internal_power_LUTs_index_by_order.size() == n_input_pin);
       CHECK_CUDA_RUNTIME(cudaMalloc(&n_input_pin_internal_power_LUTs_indexed_by_order, sizeof(NStateVal) * n_input_pin));
       CHECK_CUDA_RUNTIME(cudaMemcpy(n_input_pin_internal_power_LUTs_indexed_by_order, h_input_ports_n_internal_power_LUTs_index_by_order.data(), sizeof(NStateVal) * n_input_pin, cudaMemcpyHostToDevice));
-      CUDA_MEM_STATS.add(utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(NStateVal) * n_input_pin);
-      CHECK_CUDA_RUNTIME(cudaMalloc(&input_pin_internal_power_LUTs_indexed_by_order, sizeof(utils::cuda::OneDimensionalLUTPair**) * n_input_pin));
-      CHECK_CUDA_RUNTIME(cudaMemcpy(input_pin_internal_power_LUTs_indexed_by_order, h_input_ports_internal_power_LUTs_index_by_order.data(), sizeof(utils::cuda::OneDimensionalLUTPair**) * n_input_pin, cudaMemcpyHostToDevice));
-      CUDA_MEM_STATS.add(utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(utils::cuda::OneDimensionalLUTPair**) * n_input_pin);
+      CUDA_MEM_STATS.add(::utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(NStateVal) * n_input_pin);
+      CHECK_CUDA_RUNTIME(cudaMalloc(&input_pin_internal_power_LUTs_indexed_by_order, sizeof(::utils::cuda::OneDimensionalLUTPair**) * n_input_pin));
+      CHECK_CUDA_RUNTIME(cudaMemcpy(input_pin_internal_power_LUTs_indexed_by_order, h_input_ports_internal_power_LUTs_index_by_order.data(), sizeof(::utils::cuda::OneDimensionalLUTPair**) * n_input_pin, cudaMemcpyHostToDevice));
+      CUDA_MEM_STATS.add(::utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(::utils::cuda::OneDimensionalLUTPair**) * n_input_pin);
       cell_to_n_input_pin_internal_power_LUTs_indexed_by_order[corner_cell] = n_input_pin_internal_power_LUTs_indexed_by_order;
       cell_to_input_pin_internal_power_LUTs_indexed_by_order[corner_cell] = input_pin_internal_power_LUTs_indexed_by_order;
     }
@@ -157,9 +158,9 @@ struct Gate {
       output_pin_internal_power_LUTs = cell_to_output_pin_internal_power_LUTs.at(corner_cell);
     } else {
       assert(h_output_ports_internal_power_LUTs.size() == n_output_pin);
-      CHECK_CUDA_RUNTIME(cudaMalloc(&output_pin_internal_power_LUTs, sizeof(utils::cuda::TwoDimensionalLUTPair***) * h_output_ports_internal_power_LUTs.size()));
-      CHECK_CUDA_RUNTIME(cudaMemcpy(output_pin_internal_power_LUTs, h_output_ports_internal_power_LUTs.data(), sizeof(utils::cuda::TwoDimensionalLUTPair***) * h_output_ports_internal_power_LUTs.size(), cudaMemcpyHostToDevice));
-      CUDA_MEM_STATS.add(utils::cuda::CudaMemStats::Category::bsim_lut_index, sizeof(utils::cuda::TwoDimensionalLUTPair***) * h_output_ports_internal_power_LUTs.size());
+      CHECK_CUDA_RUNTIME(cudaMalloc(&output_pin_internal_power_LUTs, sizeof(::utils::cuda::TwoDimensionalLUTPair***) * h_output_ports_internal_power_LUTs.size()));
+      CHECK_CUDA_RUNTIME(cudaMemcpy(output_pin_internal_power_LUTs, h_output_ports_internal_power_LUTs.data(), sizeof(::utils::cuda::TwoDimensionalLUTPair***) * h_output_ports_internal_power_LUTs.size(), cudaMemcpyHostToDevice));
+      CUDA_MEM_STATS.add(::utils::cuda::CudaMemStats::Category::bsim_lut_index, sizeof(::utils::cuda::TwoDimensionalLUTPair***) * h_output_ports_internal_power_LUTs.size());
       cell_to_output_pin_internal_power_LUTs[corner_cell] = output_pin_internal_power_LUTs;
     }
     if (h_output_ports_internal_power_LUTs_index_by_order.empty()) {
@@ -173,10 +174,10 @@ struct Gate {
       assert(h_output_ports_internal_power_LUTs_index_by_order.size() == n_output_pin);
       CHECK_CUDA_RUNTIME(cudaMalloc(&n_output_pin_internal_power_LUTs_indexed_by_order, sizeof(NStateVal*) * n_output_pin));
       CHECK_CUDA_RUNTIME(cudaMemcpy(n_output_pin_internal_power_LUTs_indexed_by_order, h_output_ports_n_internal_power_LUTs_index_by_order.data(), sizeof(NStateVal*) * n_output_pin, cudaMemcpyHostToDevice));
-      CUDA_MEM_STATS.add(utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(NStateVal*) * n_output_pin);
-      CHECK_CUDA_RUNTIME(cudaMalloc(&output_pin_internal_power_LUTs_indexed_by_order, sizeof(utils::cuda::TwoDimensionalLUTPair***) * n_output_pin));
-      CHECK_CUDA_RUNTIME(cudaMemcpy(output_pin_internal_power_LUTs_indexed_by_order, h_output_ports_internal_power_LUTs_index_by_order.data(), sizeof(utils::cuda::TwoDimensionalLUTPair***) * n_output_pin, cudaMemcpyHostToDevice));
-      CUDA_MEM_STATS.add(utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(utils::cuda::TwoDimensionalLUTPair***) * n_output_pin);
+      CUDA_MEM_STATS.add(::utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(NStateVal*) * n_output_pin);
+      CHECK_CUDA_RUNTIME(cudaMalloc(&output_pin_internal_power_LUTs_indexed_by_order, sizeof(::utils::cuda::TwoDimensionalLUTPair***) * n_output_pin));
+      CHECK_CUDA_RUNTIME(cudaMemcpy(output_pin_internal_power_LUTs_indexed_by_order, h_output_ports_internal_power_LUTs_index_by_order.data(), sizeof(::utils::cuda::TwoDimensionalLUTPair***) * n_output_pin, cudaMemcpyHostToDevice));
+      CUDA_MEM_STATS.add(::utils::cuda::CudaMemStats::Category::fallback_lut_index, sizeof(::utils::cuda::TwoDimensionalLUTPair***) * n_output_pin);
       cell_to_n_output_pin_internal_power_LUTs_indexed_by_order[corner_cell] = n_output_pin_internal_power_LUTs_indexed_by_order;
       cell_to_output_pin_internal_power_LUTs_indexed_by_order[corner_cell] = output_pin_internal_power_LUTs_indexed_by_order;
     }
@@ -189,7 +190,7 @@ struct Gate {
     } else {
       CHECK_CUDA_RUNTIME(cudaMalloc(&leakage_powers, sizeof(PowerVal) * _leakage_powers.size()));
       CHECK_CUDA_RUNTIME(cudaMemcpy(leakage_powers, _leakage_powers.data(), sizeof(PowerVal) * _leakage_powers.size(), cudaMemcpyHostToDevice));
-      CUDA_MEM_STATS.add(utils::cuda::CudaMemStats::Category::bsim_leakage_index, sizeof(PowerVal) * _leakage_powers.size());
+      CUDA_MEM_STATS.add(::utils::cuda::CudaMemStats::Category::bsim_leakage_index, sizeof(PowerVal) * _leakage_powers.size());
       cell_to_leakage_powers[corner_cell] = leakage_powers;
     }
     // CHECK_CUDA_RUNTIME(cudaMalloc(&pin_waveform_starts, sizeof(NEeventVal) * n_pin));
@@ -388,4 +389,4 @@ struct Gate {
   }
 };
 
-} // end of namespace sta::power
+} // end of namespace gtpower::cuda

@@ -12,9 +12,9 @@
 #include "Defines.hh"
 #include "Log.hh"
 
-using namespace sta;
+namespace gtpower::utils {
 
-namespace power::utils {
+using namespace sta;
 // NPeriodVal
 // clkedWaveformIdx(EventTimeVal time, PeriodVal period)
 // {
@@ -293,4 +293,4 @@ getTimeBasedGlitchScalingRatioH(EventTimeVal pulse_width, SlewVal sum_slew)
   return std::min(static_cast<NToggleVal>(1.0), ratio * ratio);  // clip to 1
 }
 
-} // end of namespace power::utils
+} // end of namespace gtpower::utils

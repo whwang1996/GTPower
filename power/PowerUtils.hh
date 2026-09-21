@@ -13,7 +13,7 @@ namespace sta {
   class Vertex;
 }
 
-namespace power::utils {
+namespace gtpower::utils {
 
 // NPeriodVal
 // clkedWaveformIdx(EventTimeVal time, PeriodVal period);
@@ -93,4 +93,4 @@ resetBoolVector(std::vector<bool>& arr);
 NToggleVal
 getTimeBasedGlitchScalingRatioH(EventTimeVal pulse_width, SlewVal sum_slew);
 
-} // end of namespace power::utils
+} // end of namespace gtpower::utils

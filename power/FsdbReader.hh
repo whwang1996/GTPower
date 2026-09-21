@@ -8,19 +8,17 @@
 #include "ffrAPI.h"
 #include "Types.hh"
 
-namespace sta {
-
-class StaState;
+namespace gtpower {
 
 Vcd
 readFsdbFile(const char *file_name,
-            StaState *sta,
+            sta::StaState *sta,
             PeriodVal clk_period);
 
-class FsdbReader : public StaState
+class FsdbReader : public sta::StaState
 {
 public:
-  FsdbReader(StaState *sta, PeriodVal clk_period);
+  FsdbReader(sta::StaState *sta, PeriodVal clk_period);
   Vcd read(const char *file_name);
 
 private:
@@ -51,4 +49,4 @@ private:
   bool all_threads_make_var_ready_;
 };
 
-}  // namespace sta
+}  // namespace gtpower

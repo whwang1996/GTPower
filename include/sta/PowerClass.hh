@@ -22,11 +22,11 @@
 #include "Network.hh"
 #include "FileHelper.hh"
 
-namespace sta {
+namespace gtpower {
 
 class Power;
 class VcdValue;
-typedef vector<VcdValue> VcdValues;
+typedef std::vector<VcdValue> VcdValues;
 
 enum class PwrActivityOrigin
 {
@@ -109,21 +109,21 @@ public:
   PowerVal leakage() const { return leakage_; }
   PowerVal total() const;
   void incr(const PowerResult &result);
-  void initLeakagePowerClkedWaveform(const Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_leakage_power_clked_waveform_map_.emplace(inst, sta::PowerClkedWaveform{clk_period, n_period}); }
-  sta::PowerClkedWaveform& findLeakagePowerClkedWaveform(const Instance* inst) { return inst_to_leakage_power_clked_waveform_map_.at(inst); }
-  void initInternalPowerClkedWaveform(const Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_internal_power_clked_waveform_map_.emplace(inst, sta::PowerClkedWaveform{clk_period, n_period}); }
-  sta::PowerClkedWaveform& findInternalPowerClkedWaveform(const Instance* inst) { return inst_to_internal_power_clked_waveform_map_.at(inst); }
-  void initGlitchInternalPowerClkedWaveform(const Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_glitch_internal_power_clked_waveform_map_.emplace(inst, sta::PowerClkedWaveform{clk_period, n_period}); }
-  sta::PowerClkedWaveform& findGlitchInternalPowerClkedWaveform(const Instance* inst) { return inst_to_glitch_internal_power_clked_waveform_map_.at(inst); }
-  void initSwitchingPowerClkedWaveform(const Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_switching_power_clked_waveform_map_.emplace(inst, sta::PowerClkedWaveform{clk_period, n_period}); }
-  sta::PowerClkedWaveform& findSwitchingPowerClkedWaveform(const Instance* inst) { return inst_to_switching_power_clked_waveform_map_.at(inst); }
-  void initGlitchSwitchingPowerClkedWaveform(const Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_glitch_switching_power_clked_waveform_map_.emplace(inst, sta::PowerClkedWaveform{clk_period, n_period}); }
-  sta::PowerClkedWaveform& findGlitchSwitchingPowerClkedWaveform(const Instance* inst) { return inst_to_glitch_switching_power_clked_waveform_map_.at(inst); }
+  void initLeakagePowerClkedWaveform(const sta::Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_leakage_power_clked_waveform_map_.emplace(inst, PowerClkedWaveform{clk_period, n_period}); }
+  PowerClkedWaveform& findLeakagePowerClkedWaveform(const sta::Instance* inst) { return inst_to_leakage_power_clked_waveform_map_.at(inst); }
+  void initInternalPowerClkedWaveform(const sta::Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_internal_power_clked_waveform_map_.emplace(inst, PowerClkedWaveform{clk_period, n_period}); }
+  PowerClkedWaveform& findInternalPowerClkedWaveform(const sta::Instance* inst) { return inst_to_internal_power_clked_waveform_map_.at(inst); }
+  void initGlitchInternalPowerClkedWaveform(const sta::Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_glitch_internal_power_clked_waveform_map_.emplace(inst, PowerClkedWaveform{clk_period, n_period}); }
+  PowerClkedWaveform& findGlitchInternalPowerClkedWaveform(const sta::Instance* inst) { return inst_to_glitch_internal_power_clked_waveform_map_.at(inst); }
+  void initSwitchingPowerClkedWaveform(const sta::Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_switching_power_clked_waveform_map_.emplace(inst, PowerClkedWaveform{clk_period, n_period}); }
+  PowerClkedWaveform& findSwitchingPowerClkedWaveform(const sta::Instance* inst) { return inst_to_switching_power_clked_waveform_map_.at(inst); }
+  void initGlitchSwitchingPowerClkedWaveform(const sta::Instance* inst, PeriodVal clk_period, NPeriodVal n_period) { inst_to_glitch_switching_power_clked_waveform_map_.emplace(inst, PowerClkedWaveform{clk_period, n_period}); }
+  PowerClkedWaveform& findGlitchSwitchingPowerClkedWaveform(const sta::Instance* inst) { return inst_to_glitch_switching_power_clked_waveform_map_.at(inst); }
 
-  void printPerCycleResults(Network* network) const {
+  void printPerCycleResults(sta::Network* network) const {
     namespace fs = std::filesystem;
     std::ofstream out_file;
-    out_file.open(fs::path(utils::get_power_analysis_per_cycle_waveform_res_path()), std::ios::out);
+    out_file.open(fs::path(::utils::get_power_analysis_per_cycle_waveform_res_path()), std::ios::out);
     out_file << "Per cycle leakage power: " << std::endl;
     printSinglePerCycleResult(inst_to_leakage_power_clked_waveform_map_, network, out_file);
     out_file << "Per cycle internal power: " << std::endl;
@@ -138,7 +138,7 @@ public:
   }
 
 private:
-  void printSinglePerCycleResult(const std::map<const Instance*, sta::PowerClkedWaveform>& InstToPowerClkedWaveformMap, Network* network, std::ofstream& out_file) const {
+  void printSinglePerCycleResult(const std::map<const sta::Instance*, PowerClkedWaveform>& InstToPowerClkedWaveformMap, sta::Network* network, std::ofstream& out_file) const {
     for (auto it = InstToPowerClkedWaveformMap.begin(); it != InstToPowerClkedWaveformMap.end(); ++it) {
       out_file << network->pathName(it->first) << G_CONFIG.strs.power_analysis_res_file_separator;
       for (NPeriodVal i = 0; i < it->second.waveform().size(); ++i) {
@@ -153,11 +153,11 @@ private:
   PowerVal switching_;
   PowerVal glitch_switching_;
   PowerVal leakage_;
-  std::map<const Instance*, sta::PowerClkedWaveform> inst_to_leakage_power_clked_waveform_map_;
-  std::map<const Instance*, sta::PowerClkedWaveform> inst_to_internal_power_clked_waveform_map_;
-  std::map<const Instance*, sta::PowerClkedWaveform> inst_to_glitch_internal_power_clked_waveform_map_;
-  std::map<const Instance*, sta::PowerClkedWaveform> inst_to_switching_power_clked_waveform_map_;
-  std::map<const Instance*, sta::PowerClkedWaveform> inst_to_glitch_switching_power_clked_waveform_map_;
+  std::map<const sta::Instance*, PowerClkedWaveform> inst_to_leakage_power_clked_waveform_map_;
+  std::map<const sta::Instance*, PowerClkedWaveform> inst_to_internal_power_clked_waveform_map_;
+  std::map<const sta::Instance*, PowerClkedWaveform> inst_to_glitch_internal_power_clked_waveform_map_;
+  std::map<const sta::Instance*, PowerClkedWaveform> inst_to_switching_power_clked_waveform_map_;
+  std::map<const sta::Instance*, PowerClkedWaveform> inst_to_glitch_switching_power_clked_waveform_map_;
 };
 
-} // namespace
+} // namespace gtpower

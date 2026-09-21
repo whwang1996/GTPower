@@ -22,14 +22,17 @@ app/libOpenSTA.*
 app/libCUDA_POWER_ANALYSIS.*
 app/sta.exe
 app/sta.dSYM
+app/gtpower
+app/gtpower.exe
+app/gtpower.dSYM
 
 # iverilog turd
 examples/gcd_tb
 
 doc/._Sta.docx
 
-/test/OpenSTA-sample/res/
-/test/OpenSTA-sample/res-cpu/
+/test/gcd/res/
+/test/gcd/res-cpu/
 
 # Codex VS Code plugin may create an empty .codex file
 /.codex

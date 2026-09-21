@@ -22,13 +22,15 @@
 #include "ScopedTimer.hh"
 #include "Types.hh"
 
-using namespace power::utils;
+using namespace gtpower::utils;
 
-namespace sta {
+namespace gtpower {
+
+using namespace sta;
 
 void Power::getCircuitStat()
 {
-  utils::ScopedTimer timer_get_circuit_stat("Report Circuit Stats");
+  ::utils::ScopedTimer timer_get_circuit_stat("Report Circuit Stats");
 
   ensureActivities();
 
@@ -282,7 +284,7 @@ Power::getLeakagePower(
 
   leakage_power_values.resize(n_state == INVALID_N_STATE ? 0 : n_state);
   if (n_state != INVALID_N_STATE) {
-    utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
+    ::utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
     assert(leakage_power_values.size() != 0);
     for (NStateVal i = 0; i < n_state; ++i) {
       leakage_power_values[i] = default_leakage_exists ? default_leakage_power_val : 0;
@@ -897,4 +899,4 @@ Power::findTimeBasedAllPower(const Instance *inst,
     LOG_DEBUG << network_->pathName(inst) << " cur_gate_leakage_power_val: " << cur_gate_leakage_power_val;
   }
 }
-}  // end of namespace sta
+}  // end of namespace gtpower

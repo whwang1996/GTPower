@@ -42,15 +42,18 @@
 #include "CudaPowerThreadAllocStats.hh"
 #include "CudaMemStats.hh"
 
-using namespace utils::cuda;
-using namespace utils::cuda::power;
+using namespace ::utils::cuda;
+using namespace gtpower::cuda;
 
-using CudaMemCategory = utils::cuda::CudaMemStats::Category;
+using CudaMemCategory = ::utils::cuda::CudaMemStats::Category;
 
 // #define DISABLE_BSIM
 
-namespace sta {
-namespace power {
+namespace gtpower {
+
+using namespace sta;
+
+namespace cuda {
 __device__ __forceinline__ VcdEventVal
 getPinDefaultState(const Gate& gate, NPinVal pin_idx)
 {
@@ -1036,7 +1039,7 @@ __global__ static void kernel1_2NaiveLeakagePowerCalculationTimeRangePartitioned
 }
 // -----------------------------------------------end of naive baseline with two separate kernels-----------------------------------------------
 
-}  // end of namespace power
+}  // end of namespace cuda
 
 template <class Kernel>
 void
@@ -1095,27 +1098,27 @@ CudaPower::logKernelResourceUsage(
 void
 CudaPower::reportPowerKernelResourceUsage(NBlockVal kernel1_all_grid_block_count) const
 {
-  utils::ScopedTimer timer_report_kernel_resource_usage("reportPowerKernelResourceUsage");
+  ::utils::ScopedTimer timer_report_kernel_resource_usage("reportPowerKernelResourceUsage");
   const int block_thread_count = G_CONFIG.nums.n_thread_per_block_for_all_pins;
 
   LOG_BEGIN(INFO, "CUDA Power Kernel Resource Usage");
   if (G_CONFIG.flags.cuda_power_separate_kernels_for_dyn_and_leak) {
     logKernelResourceUsage(
       "kernel1_1",
-      power::kernel1_1NaiveDynamicPowerCalculationTimeRangePartitionedByCycleUnit,
+      cuda::kernel1_1NaiveDynamicPowerCalculationTimeRangePartitionedByCycleUnit,
       n_block_for_event_partition_,
       block_thread_count
     );
     logKernelResourceUsage(
       "kernel1_2",
-      power::kernel1_2NaiveLeakagePowerCalculationTimeRangePartitionedByCycleUnit,
+      cuda::kernel1_2NaiveLeakagePowerCalculationTimeRangePartitionedByCycleUnit,
       n_block_for_cycle_partition_,
       block_thread_count
     );
   } else {
     logKernelResourceUsage(
       "kernel1All",
-      power::kernel1AllPowerCalculationTimeRangePartitionedByCycleUnit,
+      cuda::kernel1AllPowerCalculationTimeRangePartitionedByCycleUnit,
       kernel1_all_grid_block_count,
       block_thread_count
     );
@@ -1232,7 +1235,7 @@ CudaPower::power(const Corner *corner,
              PowerResult &pad)
 {
   LOG_INFO << "cudaPower";
-  utils::cuda::setDevice(&G_CONFIG.nums.cuda_device_id);
+  ::utils::cuda::setDevice(&G_CONFIG.nums.cuda_device_id);
   printSettings();
   // ---------------------------initialization------------------------------
   const DcalcAnalysisPt *dcalc_ap = corner->findDcalcAnalysisPt(MinMax::max());
@@ -1245,12 +1248,12 @@ CudaPower::power(const Corner *corner,
   ensureActivities();
   // ---------------------------end of initialization------------------------------
 
-  utils::ScopedTimer cuda_time_based_power_analysis_timer("CUDA Time Based Power Analysis");
+  ::utils::ScopedTimer cuda_time_based_power_analysis_timer("CUDA Time Based Power Analysis");
   TIMERSTART(CUDA_TIME_BASED_POWER_ANALYSIS);
   // ---------------------------CUDA initialization------------------------------
   CUDA_MEM_STATS.reset();
-  const size_t event_bytes = G_CONFIG.nums.max_event_num * sizeof(power::Event);
-  events_ = new power::Event[G_CONFIG.nums.max_event_num];
+  const size_t event_bytes = G_CONFIG.nums.max_event_num * sizeof(cuda::Event);
+  events_ = new cuda::Event[G_CONFIG.nums.max_event_num];
   CHECK_CUDA_RUNTIME(cudaMalloc(&d_events_, event_bytes));
   CUDA_MEM_STATS.set(CudaMemCategory::events, event_bytes);
   setPeriodAndInitPerCyclePower(vcd_.timeMax(), vcd_.timeScale());
@@ -1372,7 +1375,7 @@ CudaPower::getTimeIntervals(
   // Return values.
   std::vector<std::pair<VcdEventTime, VcdEventTime>>& intervals
 ) const {
-  utils::ScopedTimer timer_get_time_intervals("getTimeIntervals");
+  ::utils::ScopedTimer timer_get_time_intervals("getTimeIntervals");
   size_t total_bus_width = utils::getTotalBusWidthOfAllVars(vcd_);
   if (G_CONFIG.nums.max_event_num < 2 * total_bus_width + 1) {
     LOG_ERROR << "G_CONFIG.nums.max_event_num " << G_CONFIG.nums.max_event_num << " is too small, which should be twice bigger than total_bus_width: " << total_bus_width;
@@ -1420,7 +1423,7 @@ CudaPower::getTimeIntervalsByCycle(
   // Return values.
   std::vector<std::pair<VcdEventTime, VcdEventTime>>& intervals
 ) const {
-  utils::ScopedTimer timer_get_time_intervals("getCycleIntervals");
+  ::utils::ScopedTimer timer_get_time_intervals("getCycleIntervals");
   TIMERSTART(GET_CYCLE_INTERVALS);
 
   size_t total_bus_width = utils::getTotalBusWidthOfAllVars(vcd_);  // TODO this is the checking for vcd time unit, change it to cycle instead
@@ -1454,7 +1457,7 @@ CudaPower::getTimeIntervalsByCycleIterateAllEvents(
   // Return values.
   std::vector<std::pair<VcdEventTime, VcdEventTime>>& intervals
 ) {
-  utils::ScopedTimer timer_get_time_intervals("getTimeIntervalsByCycleIterateAllEvents");
+  ::utils::ScopedTimer timer_get_time_intervals("getTimeIntervalsByCycleIterateAllEvents");
   TIMERSTART(GET_CYCLE_INTERVALS_ITERATE_ALL_EVENTS);
 
   size_t total_bus_width = utils::getTotalBusWidthOfAllVars(vcd_);  // TODO this is the checking for vcd time unit, change it to cycle instead
@@ -1598,7 +1601,7 @@ CudaPower::getAccuEventCountOfAllGates(VcdEventTime time) const
 void 
 CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Corner *corner, const DcalcAnalysisPt *dcalc_ap)
 {
-  utils::ScopedTimer timer_init_gate_data("initGateData");
+  ::utils::ScopedTimer timer_init_gate_data("initGateData");
   TIMERSTART(INIT_GATE_DATA);
   // ---------------------------copy data to device side------------------------------
   LOG_INFO << "Initing gate data";
@@ -1653,12 +1656,12 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
     // std::vector<CapacitanceVal> pin_load_capacitances(n_pin);
     // std::shared_ptr<bool[]> pin_is_clocks(new bool[n_pin]);
     std::unordered_map<std::string, NPinVal> port_name_to_idx_map;  // input pin with small index, output pin wi big index
-    utils::ScopedTimer timer_timing_preparation("Timing Preparation");
+    ::utils::ScopedTimer timer_timing_preparation("Timing Preparation");
     for (NPinVal pin_idx = 0; pin_idx < pins.size(); ++pin_idx) {
       const Pin *cur_pin = pins.at(pin_idx);
       const LibertyPort *cur_port = network_->libertyPort(cur_pin);
       Vertex *cur_pin_vertex = graph_->pinLoadVertex(cur_pin);
-      global_pin_default_states.push_back(::power::utils::getVertexDefaultState(cur_pin_vertex));
+      global_pin_default_states.push_back(::gtpower::utils::getVertexDefaultState(cur_pin_vertex));
       if (cur_port) {
         global_pin_voltages.push_back(portVoltage(corner_cell, cur_port, dcalc_ap));
         const SlewVal rise_slew = getSlew(cur_pin_vertex, RiseFall::rise(), corner);
@@ -1688,25 +1691,25 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
 
     // ---------------------------leakage power------------------------------
     const LeakagePowerData* leakage_power_data = nullptr;
-    utils::ScopedTimer timer_leakage_preparation("Leakage Preparation");
+    ::utils::ScopedTimer timer_leakage_preparation("Leakage Preparation");
     leakage_power_data = &getLeakagePowerData(cell, corner_cell, n_pin, port_name_to_idx_map);
     timer_leakage_preparation.EndTiming();
     // ---------------------------end of leakage power------------------------------
 
     // ---------------------------internal power------------------------------
     const InternalPowerData* internal_power_data = nullptr;
-    utils::ScopedTimer timer_lut_preparation("LUT Preparation");
+    ::utils::ScopedTimer timer_lut_preparation("LUT Preparation");
     internal_power_data = &getInternalPower(inst, corner_cell, dcalc_ap, n_pin, pins, port_name_to_idx_map);
     timer_lut_preparation.EndTiming();
     // ---------------------------end of internal power------------------------------
 
     // ---------------------------delay------------------------------
-    utils::ScopedTimer timer_delay_preparation("Delay Preparation");
+    ::utils::ScopedTimer timer_delay_preparation("Delay Preparation");
     getDelay(pins, n_pin, n_input_pin, dcalc_ap, global_cell_arc_delays);
     timer_delay_preparation.EndTiming();
     // ---------------------------end of delay------------------------------
 
-    h_multiple_output_gates_.emplace_back(new power::Gate(
+    h_multiple_output_gates_.emplace_back(new cuda::Gate(
       inst, corner_cell, !(cell->isMacro() || cell->isMemory() || cell->interfaceTiming() || cell->isPad() || inClockNetwork(inst) || cell->hasSequentials()),
       leakage_power_data->leakage_power_values, leakage_power_data->default_leakage_exists, leakage_power_data->default_leakage_exists ? leakage_power_data->default_leakage_power_val : INVALID_LEAKAGE_POWER_VAL,
       internal_power_data->input_ports_internal_power_LUTs, internal_power_data->input_ports_n_internal_power_LUTs_index_by_order, internal_power_data->input_ports_internal_power_LUTs_index_by_order,
@@ -1716,8 +1719,8 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
   }
   delete inst_iter;
   {
-    utils::ScopedTimer timer_initial_wave_preparation("Initial Waveform Preparation");
-    for (const power::Gate* cur_gate : h_multiple_output_gates_) {
+    ::utils::ScopedTimer timer_initial_wave_preparation("Initial Waveform Preparation");
+    for (const cuda::Gate* cur_gate : h_multiple_output_gates_) {
       const std::vector<const Pin *>& pins = inst_to_pins_.at(cur_gate->inst);
       for (const Pin* cur_pin : pins) {
         PwrActivity activity = findActivity(cur_pin);
@@ -1744,7 +1747,7 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
   LOG_INFO << "Init gate data complete";
 
   // ----------copy auxiliary arrays to device----------
-  utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
+  ::utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
   CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_waveform_starts_, sizeof(NEeventVal) * global_pin_waveform_starts.size()));
   CHECK_CUDA_RUNTIME(cudaMemcpy(global_pin_waveform_starts_, global_pin_waveform_starts.data(), sizeof(NEeventVal) * global_pin_waveform_starts.size(), cudaMemcpyHostToDevice));
   CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_waveform_ends_, sizeof(NEeventVal) * global_pin_waveform_ends.size()));
@@ -1774,7 +1777,7 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
   timer_h2d_transfer.EndTiming();
   size_t accu_pin_count = 0;
   size_t accu_cell_arc_delay_count = 0;
-  for (power::Gate* cur_gate: h_multiple_output_gates_) {
+  for (cuda::Gate* cur_gate: h_multiple_output_gates_) {
     cur_gate->setGateInfoByGlobalPointer(
       global_pin_waveform_starts_, global_pin_waveform_ends_, global_pin_waveform_starts, global_pin_waveform_ends,
       global_pin_default_states_,
@@ -1815,27 +1818,27 @@ CudaPower::initGateData(VcdEventTime start_time, VcdEventTime end_time, const Co
 void 
 CudaPower::copyGateDataToDeviceSide() 
 {
-  utils::ScopedTimer timer_copy_gate_data_to_device_side("copyGateDataToDeviceSide");
+  ::utils::ScopedTimer timer_copy_gate_data_to_device_side("copyGateDataToDeviceSide");
   TIMERSTART(COPY_GATE_DATA_TO_DEVICE);
 
-  power::Gate* tmp_h_gates = nullptr;
-  CHECK_CUDA_RUNTIME(cudaMallocHost(&tmp_h_gates, n_multiple_output_gate_ * sizeof(power::Gate)));
+  cuda::Gate* tmp_h_gates = nullptr;
+  CHECK_CUDA_RUNTIME(cudaMallocHost(&tmp_h_gates, n_multiple_output_gate_ * sizeof(cuda::Gate)));
   NGateVal gate_count = 0;
-  for (const power::Gate* cur_gate: h_multiple_output_gates_) {
-    std::memcpy(tmp_h_gates + gate_count, cur_gate, sizeof(power::Gate));
+  for (const cuda::Gate* cur_gate: h_multiple_output_gates_) {
+    std::memcpy(tmp_h_gates + gate_count, cur_gate, sizeof(cuda::Gate));
     ++gate_count;
   }
   CHECK_CUDA_RUNTIME(cudaFree(d_multiple_output_gates_));
-  CHECK_CUDA_RUNTIME(cudaMalloc(&d_multiple_output_gates_, n_multiple_output_gate_ * sizeof(power::Gate)));
-  utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
-  CHECK_CUDA_RUNTIME(cudaMemcpy(d_multiple_output_gates_, tmp_h_gates, n_multiple_output_gate_ * sizeof(power::Gate), cudaMemcpyHostToDevice));
+  CHECK_CUDA_RUNTIME(cudaMalloc(&d_multiple_output_gates_, n_multiple_output_gate_ * sizeof(cuda::Gate)));
+  ::utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
+  CHECK_CUDA_RUNTIME(cudaMemcpy(d_multiple_output_gates_, tmp_h_gates, n_multiple_output_gate_ * sizeof(cuda::Gate), cudaMemcpyHostToDevice));
   timer_h2d_transfer.EndTiming();
   CHECK_CUDA_RUNTIME(cudaFreeHost(tmp_h_gates));
-  CUDA_MEM_STATS.set(CudaMemCategory::gate, n_multiple_output_gate_ * sizeof(power::Gate));
+  CUDA_MEM_STATS.set(CudaMemCategory::gate, n_multiple_output_gate_ * sizeof(cuda::Gate));
 
   TIMEREND(COPY_GATE_DATA_TO_DEVICE);
   DURATION_ms(COPY_GATE_DATA_TO_DEVICE);
-  LOG_INFO << "Transferred gate data size: " << sizeof(power::Gate) * n_multiple_output_gate_ / (1024.0 * 1024 * 1024) << "GB";
+  LOG_INFO << "Transferred gate data size: " << sizeof(cuda::Gate) * n_multiple_output_gate_ / (1024.0 * 1024 * 1024) << "GB";
 }
 
 void 
@@ -1846,7 +1849,7 @@ CudaPower::getGateWaveformRangeSingleThread(VcdEventTime start_time, VcdEventTim
 
   NEeventVal accu_event_count = 0;
   std::unordered_map<const VcdValue*, std::unordered_map<int, std::pair<NEeventVal, NEeventVal>>> pin_vcd_values_ptr_to_value_bit_to_range_map;  // avoid copy redundant waveforms
-  for (const power::Gate* cur_gate: h_multiple_output_gates_) {
+  for (const cuda::Gate* cur_gate: h_multiple_output_gates_) {
     // ---------------------------init pin information------------------------------
     std::vector<const Pin *> pins;
     NPinVal n_pin = 0, n_input_pin = 0, n_output_pin = 0;
@@ -2010,7 +2013,7 @@ CudaPower::getGateWaveformRangeMultiThread(
   // Phase 5: 写 events_（并行，无锁）
   //   关键优化：不调用 setEvent；不查 vcd_value_to_int_map_；直接写裸指针 events_
   // -------------------------
-  sta::power::Event* __restrict events = events_;
+  gtpower::cuda::Event* __restrict events = events_;
   const auto& v2i = vcdValueToEventValTable();
 
   #pragma omp parallel for num_threads(n_threads) schedule(guided, 1)
@@ -2040,7 +2043,7 @@ CudaPower::getGateWaveformRangeMultiThread(
   std::vector<size_t> gate_pin_offset(n_gates + 1, 0);
 
   for (size_t gate_idx = 0; gate_idx < n_gates; ++gate_idx) {
-    const power::Gate* cur_gate = h_multiple_output_gates_[gate_idx];
+    const cuda::Gate* cur_gate = h_multiple_output_gates_[gate_idx];
     const auto& pins = inst_to_pins_.at(cur_gate->inst);
     gate_pin_offset[gate_idx + 1] = gate_pin_offset[gate_idx] + pins.size();
   }
@@ -2051,7 +2054,7 @@ CudaPower::getGateWaveformRangeMultiThread(
 
   #pragma omp parallel for num_threads(n_threads) schedule(static)
   for (size_t gate_idx = 0; gate_idx < n_gates; ++gate_idx) {
-    const power::Gate* cur_gate = h_multiple_output_gates_[gate_idx];
+    const cuda::Gate* cur_gate = h_multiple_output_gates_[gate_idx];
     const auto& pins = inst_to_pins_.at(cur_gate->inst);
 
     const size_t base_pin = gate_pin_offset[gate_idx];
@@ -2086,10 +2089,10 @@ void
 CudaPower::renewGateWaveform(const std::vector<NEeventVal>& h_global_pin_waveform_starts, const std::vector<NEeventVal>& h_global_pin_waveform_ends)
 {
   LOG_INFO << "Renewing gate waveform... ";
-  utils::ScopedTimer renew_timer("renewGateWaveform");
+  ::utils::ScopedTimer renew_timer("renewGateWaveform");
   TIMERSTART(RENEW_WAVEFORM);
   
-  utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
+  ::utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
   CHECK_CUDA_RUNTIME(cudaFree(global_pin_waveform_starts_));
   CHECK_CUDA_RUNTIME(cudaMalloc(&global_pin_waveform_starts_, sizeof(NEeventVal) * h_global_pin_waveform_starts.size()));
   CHECK_CUDA_RUNTIME(cudaMemcpy(global_pin_waveform_starts_, h_global_pin_waveform_starts.data(), sizeof(NEeventVal) * h_global_pin_waveform_starts.size(), cudaMemcpyHostToDevice));
@@ -2103,7 +2106,7 @@ CudaPower::renewGateWaveform(const std::vector<NEeventVal>& h_global_pin_wavefor
     + sizeof(NEeventVal) * (h_global_pin_waveform_starts.size() + h_global_pin_waveform_ends.size())
   );
   size_t accu_pin_count = 0;
-  for (power::Gate* cur_gate: h_multiple_output_gates_) {
+  for (cuda::Gate* cur_gate: h_multiple_output_gates_) {
     cur_gate->renewWaveformPointers(global_pin_waveform_starts_, global_pin_waveform_ends_, h_global_pin_waveform_starts, h_global_pin_waveform_ends, accu_pin_count);
     accu_pin_count += cur_gate->n_pin;
   }
@@ -2115,11 +2118,11 @@ CudaPower::renewGateWaveform(const std::vector<NEeventVal>& h_global_pin_wavefor
 
 void
 CudaPower::copyWaveformToDeviceSide() {
-  utils::ScopedTimer timer_copy_waveform_to_device_side("copyWaveformToDeviceSide");
+  ::utils::ScopedTimer timer_copy_waveform_to_device_side("copyWaveformToDeviceSide");
   TIMERSTART(COPY_WAVEFORM_TO_DEVICE);
 
-  utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
-  CHECK_CUDA_RUNTIME(cudaMemcpy(d_events_, events_, G_CONFIG.nums.max_event_num * sizeof(power::Event), cudaMemcpyHostToDevice));
+  ::utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
+  CHECK_CUDA_RUNTIME(cudaMemcpy(d_events_, events_, G_CONFIG.nums.max_event_num * sizeof(cuda::Event), cudaMemcpyHostToDevice));
   timer_h2d_transfer.EndTiming();
 
   TIMEREND(COPY_WAVEFORM_TO_DEVICE);
@@ -2380,7 +2383,7 @@ CudaPower::getInputInternalPower(
   std::vector<OneDimensionalLUTPair*> h_cur_port_internal_power_LUTs_indexed_by_order;
   for (const InternalPower *pwr: internal_pwrs) {  // TODO sort internal power to make unconditioned one ahead
     std::vector<VcdEventVal> when_state_vec;
-    const bool when_satisfiable = ::power::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
+    const bool when_satisfiable = ::gtpower::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
     OneDimensionalLUTPair* d_1d_lut_pair_ptr = new OneDimensionalLUTPair;
     CUDA_MEM_STATS.add(CudaMemCategory::lut_managed, sizeof(OneDimensionalLUTPair));
     for (RiseFall *rf : RiseFall::range()) {
@@ -2407,7 +2410,7 @@ CudaPower::getInputInternalPower(
     d_1d_lut_pair_ptr->setWhenState(when_state_vec, when_satisfiable);
 
     if (n_state != INVALID_N_STATE) {
-      utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
+      ::utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
       assert(h_cur_port_internal_power_LUTs.size() != 0);
       std::vector<NStateVal> matched_state_idxs;
       getStateIdx(port_name_to_idx_map, pwr->when(), matched_state_idxs);
@@ -2523,7 +2526,7 @@ CudaPower::getOutputInternalPower(
       port_to_internal_pwrs_map.at(INVALID_PORT_NAME) : port_to_internal_pwrs_map.at(cur_related_port->name());
     for (const InternalPower *pwr: cur_related_port_internal_pwrs) {  // TODO sort internal power to make unconditioned one ahead
       std::vector<VcdEventVal> when_state_vec;
-      const bool when_satisfiable = ::power::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
+      const bool when_satisfiable = ::gtpower::utils::getWhenPinStates(pwr->when(), port_name_to_idx_map, when_state_vec);
       TwoDimensionalLUTPair* d_2d_lut_pair_ptr = new TwoDimensionalLUTPair;
       CUDA_MEM_STATS.add(CudaMemCategory::lut_managed, sizeof(TwoDimensionalLUTPair));
       for (RiseFall *rf : RiseFall::range()) {
@@ -2567,7 +2570,7 @@ CudaPower::getOutputInternalPower(
       d_2d_lut_pair_ptr->setWhenState(when_state_vec, when_satisfiable);
 
       if (n_state != INVALID_N_STATE) {
-        utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
+        ::utils::ScopedTimer timer_bsim_construction("BSIM/state-index mapping construction");
         assert(h_cur_related_port_internal_power_LUTs.size() != 0);
         std::vector<NStateVal> matched_state_idxs;
         getStateIdx(port_name_to_idx_map, pwr->when(), matched_state_idxs);
@@ -2632,7 +2635,7 @@ CudaPower::setEvent(VcdEventTime time, VcdEventVal val, bool is_glitch, NEeventV
 void 
 CudaPower::initPerGatePower()
 {
-  utils::ScopedTimer timer_init_per_gate_power("initPerGatePower");
+  ::utils::ScopedTimer timer_init_per_gate_power("initPerGatePower");
   LOG_INFO << "Initing per gate power...";
   // -------------------------------for multiple output gates------------------------------
   CHECK_CUDA_RUNTIME(cudaMalloc(&gate_leakage_powers_, n_multiple_output_gate_ * sizeof(PowerVal)));
@@ -2701,7 +2704,7 @@ void
 CudaPower::scheduleKernel(VcdEventTime interval_start_time, VcdEventTime interval_end_time) 
 {
   LOG_INFO << "Scheduling kernel... ";
-  utils::ScopedTimer timer_schedule_kernel("scheduleKernel");
+  ::utils::ScopedTimer timer_schedule_kernel("scheduleKernel");
   scheduleKernelForEventAndCycleBasedPartition(interval_start_time, interval_end_time);
   LOG_INFO << "Schedule kernel complete.";
 
@@ -2721,10 +2724,10 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
 
   NPeriodVal n_cycle_in_current_interval = (interval_end_time / vcd_time_unit_per_cycle_) - (interval_start_time / vcd_time_unit_per_cycle_);
   // ---------------------------set n_cycle_per_thread for each gate---------------------------
-  utils::ScopedTimer timer_select_n_cycle_per_thread("Select n_cycle_per_thread");
+  ::utils::ScopedTimer timer_select_n_cycle_per_thread("Select n_cycle_per_thread");
   #pragma omp parallel for num_threads(G_CONFIG.nums.multi_thread_number) schedule(static)
   for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-    sta::power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
+    gtpower::cuda::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
     if (G_CONFIG.flags.enable_auto_select_n_cycle_per_thread_for_each_gate) {
       cur_gate->setNCyclePerThreadByEventCount(
         n_cycle_in_current_interval, 
@@ -2740,7 +2743,7 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
 
   // ---------------------------get stat information---------------------------
   // const double n_event_per_block = G_CONFIG.nums.n_event_per_thread_for_all_pins * G_CONFIG.nums.n_thread_per_block_for_all_pins;  // double type to make sure ceil makes sense
-  utils::ScopedTimer timer_compute_thread_block_ranges("Compute Thread/Block Ranges");
+  ::utils::ScopedTimer timer_compute_thread_block_ranges("Compute Thread/Block Ranges");
   const int n_event_per_thread = G_CONFIG.flags.cuda_power_separate_kernels_for_dyn_and_leak ? 1 : G_CONFIG.nums.n_event_per_thread_for_all_pins;
   std::vector<NThreadVal> event_thread_counts(n_multiple_output_gate_);
   std::vector<NThreadVal> cycle_thread_counts(n_multiple_output_gate_);
@@ -2748,7 +2751,7 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
   std::vector<NBlockVal> cycle_block_counts(n_multiple_output_gate_);
   #pragma omp parallel for num_threads(G_CONFIG.nums.multi_thread_number) schedule(static)
   for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-    sta::power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
+    gtpower::cuda::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
     event_thread_counts[gate_idx] = ceil_div(std::accumulate(cur_gate->pin_waveform_sizes, cur_gate->pin_waveform_sizes + cur_gate->n_pin, static_cast<size_t>(0)), n_event_per_thread);
     cycle_thread_counts[gate_idx] = ceil_div(n_cycle_in_current_interval, cur_gate->n_cycle_per_thread);  // n_cycle_per_thread is already set for each gate
     event_block_counts[gate_idx] = ceil_div(event_thread_counts[gate_idx], G_CONFIG.nums.n_thread_per_block_for_all_pins);
@@ -2775,7 +2778,7 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
 
   #pragma omp parallel for num_threads(G_CONFIG.nums.multi_thread_number) schedule(guided, 64)
   for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-    sta::power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
+    gtpower::cuda::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
     cur_gate->setAllPinsBlockThreadRange(
       event_thread_offsets[gate_idx], event_thread_offsets[gate_idx + 1],
       event_block_offsets[gate_idx], event_block_offsets[gate_idx + 1],
@@ -2800,7 +2803,7 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
     << " power_res_length_for_all_gates: " << power_res_length_for_all_gates << " estimated global auxiliary memory usage: " 
     << sizeof(PowerVal) * power_res_length_for_all_gates * 5 / (1024.0 * 1024 * 1024) << "GB";
   n_block_for_event_partition_ = accu_block_count_for_event_partition;
-  utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
+  ::utils::ScopedTimer timer_h2d_transfer("H2D Transfer");
   CHECK_CUDA_RUNTIME(cudaFree(block_corr_gate_idxes_for_event_partition_));
   CHECK_CUDA_RUNTIME(cudaMalloc(&block_corr_gate_idxes_for_event_partition_, sizeof(NGateVal) * n_block_for_event_partition_));
   CHECK_CUDA_RUNTIME(cudaMemcpy(block_corr_gate_idxes_for_event_partition_, block_corresonpding_gate_idxes_for_event_partition.get(), sizeof(NGateVal) * n_block_for_event_partition_, cudaMemcpyHostToDevice));
@@ -2811,7 +2814,7 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
   timer_h2d_transfer.EndTiming();
   CUDA_MEM_STATS.set(CudaMemCategory::schedule, sizeof(NGateVal) * (n_block_for_event_partition_ + n_block_for_cycle_partition_));
 
-  utils::ScopedTimer timer_allocate_reset_tile_results("Allocate/Reset Tile Results");
+  ::utils::ScopedTimer timer_allocate_reset_tile_results("Allocate/Reset Tile Results");
   CHECK_CUDA_RUNTIME(cudaFree(global_per_tile_leakage_res_));
   CHECK_CUDA_RUNTIME(cudaMalloc(&global_per_tile_leakage_res_, sizeof(PowerVal) * power_res_length_for_all_gates));
   CHECK_CUDA_RUNTIME(cudaMemset(global_per_tile_leakage_res_, 0, sizeof(PowerVal) *  power_res_length_for_all_gates));
@@ -2831,7 +2834,7 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
   CUDA_MEM_STATS.set(CudaMemCategory::tile_result, sizeof(PowerVal) * power_res_length_for_all_gates * 5);
 
   for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-    sta::power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
+    gtpower::cuda::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
     const size_t cur_gate_power_res_offset = gate_idx * G_CONFIG.nums.power_res_length_for_each_gate;
     cur_gate->setPerTileResultPointer(
       global_per_tile_leakage_res_,
@@ -2848,7 +2851,7 @@ CudaPower::scheduleKernelForEventAndCycleBasedPartition(VcdEventTime interval_st
 void
 CudaPower::runCudaPowerAnalysis(VcdEventTime interval_start_time, VcdEventTime interval_end_time, const std::pair<VcdEventTime, VcdEventTime>* next_interval)
 {
-  utils::ScopedTimer timer_run_cuda_power_analysis("runCudaPowerAnalysis");
+  ::utils::ScopedTimer timer_run_cuda_power_analysis("runCudaPowerAnalysis");
   char cuda_thread_partition_basis;
   NBlockVal n_block;
   NGateVal* block_corr_gate_idxes;
@@ -2872,7 +2875,7 @@ CudaPower::runCudaPowerAnalysis(VcdEventTime interval_start_time, VcdEventTime i
   CHECK_CUDA_RUNTIME(cudaEventCreate(&k11_stop_cu_event));
   // --------------------------run power computation kernel--------------------------
   LOG_INFO << "Launching power calculation kernel...";
-  utils::ScopedTimer timer_power_analysis_kernel("Power Analysis Kernel");
+  ::utils::ScopedTimer timer_power_analysis_kernel("Power Analysis Kernel");
   if (G_CONFIG.flags.partition_unit_is_cycle) {
     LOG_INFO << "Runnig power calculation, the time range is partitioned by cycle unit, n_period_: " << n_period_
       << " start cycle: " << (interval_start_time / vcd_time_unit_per_cycle_) << " end cycle: "  <<  (interval_end_time / vcd_time_unit_per_cycle_);
@@ -2956,7 +2959,7 @@ CudaPower::runCudaPowerAnalysis(VcdEventTime interval_start_time, VcdEventTime i
 void
 CudaPower::mergeResult()
 {
-  utils::ScopedTimer timer_merge_result("mergeResult");
+  ::utils::ScopedTimer timer_merge_result("mergeResult");
 
   // --------------------------leakage and internal--------------------------
   LOG_INFO << "Launching merge leakage and internal tile result kernel...";
@@ -2993,20 +2996,20 @@ CudaPower::mergeResult()
 void
 CudaPower::recordResult()
 {
-  utils::ScopedTimer timer_record_result("recordResult");
+  ::utils::ScopedTimer timer_record_result("recordResult");
   LOG_INFO << "Recording result...";
   // --------------------------leakage and internal--------------------------
-  utils::ScopedTimer timer_d2h_transfer("D2H Transfer");
+  ::utils::ScopedTimer timer_d2h_transfer("D2H Transfer");
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_gate_leakage_powers_, gate_leakage_powers_, n_multiple_output_gate_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_gate_internal_powers_, gate_internal_powers_, n_multiple_output_gate_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_gate_glitch_internal_powers_, gate_glitch_internal_powers_, n_multiple_output_gate_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_gate_switching_powers_, gate_switching_powers_, n_multiple_output_gate_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_gate_glitch_switching_powers_, gate_glitch_switching_powers_, n_multiple_output_gate_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   timer_d2h_transfer.EndTiming();
-  utils::ScopedTimer timer_aggregation("Reduction/Aggregation");
+  ::utils::ScopedTimer timer_aggregation("Reduction/Aggregation");
   #pragma omp parallel for num_threads(G_CONFIG.nums.multi_thread_number) schedule(static)
   for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-    const sta::power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
+    const gtpower::cuda::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
     PowerResult& inst_power_res = inst_to_res_.at(cur_gate->inst);
     inst_power_res.leakage() += h_gate_leakage_powers_[gate_idx];
     inst_power_res.internal() += h_gate_internal_powers_[gate_idx] + h_gate_glitch_internal_powers_[gate_idx];
@@ -3016,7 +3019,7 @@ CudaPower::recordResult()
   }
   if (LOG_DEBUG_FLAG) {
     for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-      const sta::power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
+      const gtpower::cuda::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
       LOG_DEBUG << "In recordResult, " 
         << gate_idx << " " << network_->pathName(cur_gate->inst) 
         << " leakage power: " << h_gate_leakage_powers_[gate_idx]
@@ -3041,9 +3044,9 @@ CudaPower::finalizeResult(
   PowerResult &pad
 )
 {
-  utils::ScopedTimer finalize_result_timer("finalizeResult");
+  ::utils::ScopedTimer finalize_result_timer("finalizeResult");
   LOG_INFO << "Finalizing result...";
-  utils::ScopedTimer timer_aggregation("Reduction/Aggregation");
+  ::utils::ScopedTimer timer_aggregation("Reduction/Aggregation");
   for (auto iter = inst_to_res_.begin(); iter != inst_to_res_.end(); ++iter){
     LibertyCell *cell = network_->libertyCell(iter->first);
     if (cell) {
@@ -3109,14 +3112,14 @@ CudaPower::finalizeResult(
   total.initGlitchInternalPowerClkedWaveform(top_instance, clk_period_, n_period_);
   total.initSwitchingPowerClkedWaveform(top_instance, clk_period_, n_period_);
   total.initGlitchSwitchingPowerClkedWaveform(top_instance, clk_period_, n_period_);
-  utils::ScopedTimer timer_d2h_transfer("D2H Transfer");
+  ::utils::ScopedTimer timer_d2h_transfer("D2H Transfer");
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_per_cycle_leakage_powers_, per_cycle_leakage_powers_, n_period_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_per_cycle_internal_powers_, per_cycle_internal_powers_, n_period_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_per_cycle_glitch_internal_powers_, per_cycle_glitch_internal_powers_, n_period_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_per_cycle_switching_powers_, per_cycle_switching_powers_, n_period_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   CHECK_CUDA_RUNTIME(cudaMemcpy(h_per_cycle_glitch_switching_powers_, per_cycle_glitch_switching_powers_, n_period_ * sizeof(PowerVal), cudaMemcpyDeviceToHost));
   timer_d2h_transfer.EndTiming();
-  utils::ScopedTimer timer_waveform_aggregation("Reduction/Aggregation");
+  ::utils::ScopedTimer timer_waveform_aggregation("Reduction/Aggregation");
   for (NPeriodVal cycle_idx = 0; cycle_idx < n_period_; ++cycle_idx) {
     total.findLeakagePowerClkedWaveform(top_instance).waveform()[cycle_idx] += h_per_cycle_leakage_powers_[cycle_idx];
     total.findInternalPowerClkedWaveform(top_instance).waveform()[cycle_idx] += h_per_cycle_internal_powers_[cycle_idx] + h_per_cycle_glitch_internal_powers_[cycle_idx];
@@ -3133,7 +3136,7 @@ CudaPower::printCellRes() const
 {
   namespace fs = std::filesystem;
   std::ofstream out_file;
-  out_file.open(fs::path(utils::get_power_analysis_cell_res_path()), std::ios::out);
+  out_file.open(fs::path(::utils::get_power_analysis_cell_res_path()), std::ios::out);
   out_file << "cell" << G_CONFIG.strs.power_analysis_res_file_separator 
     << "Internal_Power" << G_CONFIG.strs.power_analysis_res_file_separator << "Glitch_Internal_Power" << G_CONFIG.strs.power_analysis_res_file_separator
     << "Switching_Power" << G_CONFIG.strs.power_analysis_res_file_separator << "Glitch_Switching_Power" << G_CONFIG.strs.power_analysis_res_file_separator
@@ -3143,7 +3146,7 @@ CudaPower::printCellRes() const
     << "\n";
 
   for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-    const sta::power::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
+    const gtpower::cuda::Gate* cur_gate = h_multiple_output_gates_.at(gate_idx);
     LibertyCell* cell = network_->libertyCell(cur_gate->inst);
     PowerVal cur_gate_regular_internal = inst_to_res_.at(cur_gate->inst).internal() - inst_to_res_.at(cur_gate->inst).glitchInternal();
     PowerVal cur_gate_glitch_internal = inst_to_res_.at(cur_gate->inst).glitchInternal();
@@ -3184,7 +3187,7 @@ CudaPower::getThreadAllocationStats(const VcdEventTime interval_start_time, cons
     << " n_thread_per_block=" << G_CONFIG.nums.n_thread_per_block_for_all_pins
     << " baselines=" << global_n_cycle_baseline_1 << "," << global_n_cycle_baseline_2;
 
-  auto s_cpt1 = sta::power::collect_cycle_partition_thread_alloc_stats(
+  auto s_cpt1 = gtpower::cuda::collect_cycle_partition_thread_alloc_stats(
     h_multiple_output_gates_,
     interval_start_time, interval_end_time,
     vcd_time_unit_per_cycle_,
@@ -3196,7 +3199,7 @@ CudaPower::getThreadAllocationStats(const VcdEventTime interval_start_time, cons
     /*sparse_override*/ sparse_thr
   );
 
-  auto s_cpt2 = sta::power::collect_cycle_partition_thread_alloc_stats(
+  auto s_cpt2 = gtpower::cuda::collect_cycle_partition_thread_alloc_stats(
     h_multiple_output_gates_,
     interval_start_time, interval_end_time,
     vcd_time_unit_per_cycle_,
@@ -3208,7 +3211,7 @@ CudaPower::getThreadAllocationStats(const VcdEventTime interval_start_time, cons
     /*sparse_override*/ sparse_thr
   );
 
-  auto s_auto = sta::power::collect_cycle_partition_thread_alloc_stats(
+  auto s_auto = gtpower::cuda::collect_cycle_partition_thread_alloc_stats(
     h_multiple_output_gates_,
     interval_start_time, interval_end_time,
     vcd_time_unit_per_cycle_,
@@ -3220,9 +3223,9 @@ CudaPower::getThreadAllocationStats(const VcdEventTime interval_start_time, cons
     /*sparse_override*/ sparse_thr
   );
 
-  sta::power::logThreadAllocSummaryRound(s_cpt1, "global_cpt" + std::to_string(global_n_cycle_baseline_1), interval_start_time, interval_end_time);
-  sta::power::logThreadAllocSummaryRound(s_cpt2, "global_cpt" + std::to_string(global_n_cycle_baseline_2), interval_start_time, interval_end_time);
-  sta::power::logThreadAllocSummaryRound(s_auto, "auto_E" + std::to_string(E_target), interval_start_time, interval_end_time);
+  gtpower::cuda::logThreadAllocSummaryRound(s_cpt1, "global_cpt" + std::to_string(global_n_cycle_baseline_1), interval_start_time, interval_end_time);
+  gtpower::cuda::logThreadAllocSummaryRound(s_cpt2, "global_cpt" + std::to_string(global_n_cycle_baseline_2), interval_start_time, interval_end_time);
+  gtpower::cuda::logThreadAllocSummaryRound(s_auto, "auto_E" + std::to_string(E_target), interval_start_time, interval_end_time);
 }
 
 void 
@@ -3231,7 +3234,7 @@ CudaPower::releaseMemory()
   LOG_INFO << "Releasing memory...";
   //--------------------events and gates-----------------------
   for (NGateVal gate_idx = 0; gate_idx < n_multiple_output_gate_; ++gate_idx) {
-    sta::power::Gate*& cur_gate = h_multiple_output_gates_.at(gate_idx);
+    gtpower::cuda::Gate*& cur_gate = h_multiple_output_gates_.at(gate_idx);
     delete cur_gate;
     cur_gate = nullptr;
   }
@@ -3335,4 +3338,4 @@ CudaPower::~CudaPower()
 {
   releaseMemory();
 }
-} // end of namespace sta
+} // end of namespace gtpower

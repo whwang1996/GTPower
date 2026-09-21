@@ -39,20 +39,25 @@ namespace sta {
 class Sta;
 class Corner;
 class DcalcAnalysisPt;
-class PropActivityVisitor;
 class BfsFwdIterator;
 class Vertex;
 
-typedef std::pair<const Instance *, LibertyPort *> SeqPin;
+}  // namespace sta
+
+namespace gtpower {
+
+class PropActivityVisitor;
+
+typedef std::pair<const sta::Instance *, sta::LibertyPort *> SeqPin;
 
 class SeqPinHash
 {
 public:
-  SeqPinHash(const Network *network);
+  SeqPinHash(const sta::Network *network);
   size_t operator()(const SeqPin &pin) const;
 
 private:
-  const Network *network_;
+  const sta::Network *network_;
 };
 
 class SeqPinEqual
@@ -62,17 +67,17 @@ public:
                   const SeqPin &pin2) const;
 };
 
-typedef UnorderedMap<const Pin *, PwrActivity> PwrActivityMap;
-typedef UnorderedMap<SeqPin, PwrActivity, SeqPinHash, SeqPinEqual> PwrSeqActivityMap;
+typedef sta::UnorderedMap<const sta::Pin *, PwrActivity> PwrActivityMap;
+typedef sta::UnorderedMap<SeqPin, PwrActivity, SeqPinHash, SeqPinEqual> PwrSeqActivityMap;
 
 // The Power class has access to Sta components directly for
 // convenience but also requires access to the Sta class member functions.
-class Power : public StaState
+class Power : public sta::StaState
 {
 public:
-  Power(StaState *sta);
+  Power(sta::StaState *sta);
   void getCircuitStat();
-  virtual void power(const Corner *corner,
+  virtual void power(const sta::Corner *corner,
              // Return values.
              PowerResult &total,
              PowerResult &sequential,
@@ -80,24 +85,24 @@ public:
              PowerResult &clock,
              PowerResult &macro,
              PowerResult &pad);
-  PowerResult power(const Instance *inst,
-                    const Corner *corner);
+  PowerResult power(const sta::Instance *inst,
+                    const sta::Corner *corner);
   void setGlobalActivity(float activity,
                          float duty);
   void setInputActivity(float activity,
                         float duty);
-  void setInputPortActivity(const Port *input_port,
+  void setInputPortActivity(const sta::Port *input_port,
                             float activity,
                             float duty);
-  PwrActivity &activity(const Pin *pin);
-  void setUserActivity(const Pin *pin,
+  PwrActivity &activity(const sta::Pin *pin);
+  void setUserActivity(const sta::Pin *pin,
                        float activity,
                        float duty,
                        PwrActivityOrigin origin,
                        const VcdValues* var_values_ptr=nullptr,
                        int value_bit=-1);
   // Activity is toggles per second.
-  PwrActivity findClkedActivity(const Pin *pin);
+  PwrActivity findClkedActivity(const sta::Pin *pin);
   PeriodVal clkPeriod() const { return clk_period_; }
   void setClkPeriod(PeriodVal clk_period) { clk_period_ = clk_period; }
   Vcd& vcd() { return vcd_; }
@@ -108,86 +113,86 @@ protected:
   PeriodVal clk_period_;
   const std::unordered_map<char, VcdEventVal> vcd_value_to_int_map_ = {{'0', 0}, {'1', 1}, {'X', 2}, {'Z', 3}};
 
-  bool inClockNetwork(const Instance *inst);
-  void powerInside(const Instance *hinst,
-                   const Corner *corner,
+  bool inClockNetwork(const sta::Instance *inst);
+  void powerInside(const sta::Instance *hinst,
+                   const sta::Corner *corner,
                    PowerResult &result);
   void ensureActivities();
   void reportResolvedTimeBasedPowerAnalysisWorkload();
-  bool hasUserActivity(const Pin *pin);
-  PwrActivity &userActivity(const Pin *pin);
-  void setSeqActivity(const Instance *reg,
-                      LibertyPort *output,
+  bool hasUserActivity(const sta::Pin *pin);
+  PwrActivity &userActivity(const sta::Pin *pin);
+  void setSeqActivity(const sta::Instance *reg,
+                      sta::LibertyPort *output,
                       PwrActivity &activity);
-  bool hasSeqActivity(const Instance *reg,
-                      LibertyPort *output);
-  PwrActivity &seqActivity(const Instance *reg,
-                           LibertyPort *output);
-  bool hasActivity(const Pin *pin);
-  void setActivity(const Pin *pin,
+  bool hasSeqActivity(const sta::Instance *reg,
+                      sta::LibertyPort *output);
+  PwrActivity &seqActivity(const sta::Instance *reg,
+                           sta::LibertyPort *output);
+  bool hasActivity(const sta::Pin *pin);
+  void setActivity(const sta::Pin *pin,
                    PwrActivity &activity);
 
-  PowerResult power(const Instance *inst,
-                    LibertyCell *cell,
-                    const Corner *corner);
-  void findInternalPower(const Instance *inst,
-                         LibertyCell *cell,
-                         const Corner *corner,
-                         const Clock *inst_clk,
+  PowerResult power(const sta::Instance *inst,
+                    sta::LibertyCell *cell,
+                    const sta::Corner *corner);
+  void findInternalPower(const sta::Instance *inst,
+                         sta::LibertyCell *cell,
+                         const sta::Corner *corner,
+                         const sta::Clock *inst_clk,
                          // Return values.
                          PowerResult &result);
-  void findInputInternalPower(const Pin *to_pin,
-                              LibertyPort *to_port,
-                              const Instance *inst,
-                              LibertyCell *cell,
+  void findInputInternalPower(const sta::Pin *to_pin,
+                              sta::LibertyPort *to_port,
+                              const sta::Instance *inst,
+                              sta::LibertyCell *cell,
                               PwrActivity &to_activity,
                               float load_cap,
-                              const Corner *corner,
+                              const sta::Corner *corner,
                               // Return values.
                               PowerResult &result);
-  void findOutputInternalPower(const LibertyPort *to_port,
-                               const Instance *inst,
-                               LibertyCell *cell,
+  void findOutputInternalPower(const sta::LibertyPort *to_port,
+                               const sta::Instance *inst,
+                               sta::LibertyCell *cell,
                                PwrActivity &to_activity,
                                float load_cap,
-                               const Corner *corner,
+                               const sta::Corner *corner,
                                // Return values.
                                PowerResult &result);
-  void findLeakagePower(const Instance *inst,
-                        LibertyCell *cell,
-                        const Corner *corner,
+  void findLeakagePower(const sta::Instance *inst,
+                        sta::LibertyCell *cell,
+                        const sta::Corner *corner,
                         // Return values.
                         PowerResult &result);
-  void findSwitchingPower(const Instance *inst,
-                          LibertyCell *cell,
-                          const Corner *corner,
-                          const Clock *inst_clk,
+  void findSwitchingPower(const sta::Instance *inst,
+                          sta::LibertyCell *cell,
+                          const sta::Corner *corner,
+                          const sta::Clock *inst_clk,
                           // Return values.
                           PowerResult &result);
   // -----------------------time based power analysis---------------------------
-  PowerResult timeBasedPower(const Instance *inst,
-                  LibertyCell *cell,
-                  const Corner *corner,
+  PowerResult timeBasedPower(const sta::Instance *inst,
+                  sta::LibertyCell *cell,
+                  const sta::Corner *corner,
                   // Return values.
                   PowerResult& total_result);
-  void findTimeBasedAllPower(const Instance *inst,
-                        LibertyCell *cell,
-                        const Corner *corner,
+  void findTimeBasedAllPower(const sta::Instance *inst,
+                        sta::LibertyCell *cell,
+                        const sta::Corner *corner,
                         // Return values.
                         PowerResult &result,
                         PowerResult &total_result);
   void calculatePerCycleLeakagePower(
-                          const Instance *inst,
+                          const sta::Instance *inst,
                           const PowerVal leakage_val,
                           const VcdTime prev_time,
                           const VcdTime cur_time,
                           const double time_scale,
                           const double clk_period,
                           PowerResult& result) const;
-  void getPinInformation(const Instance *inst, std::vector<const Pin *> *pins, NPinVal *n_pin, NPinVal *n_input_pin, NPinVal *n_output_pin) const;
+  void getPinInformation(const sta::Instance *inst, std::vector<const sta::Pin *> *pins, NPinVal *n_pin, NPinVal *n_input_pin, NPinVal *n_output_pin) const;
   void getStateIdx(
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map, 
-    const FuncExpr* when,
+    const sta::FuncExpr* when,
     // Return values.
     std::vector<NStateVal>& matched_state_idxs
   ) const;
@@ -202,8 +207,8 @@ protected:
   NEeventVal getEventIdxByTime(const VcdValue* vcd_values, NEeventVal n_event, VcdEventTime time, NEeventVal left) const;
   NEeventVal getEventIdxByTime(const VcdValues& vcd_values, VcdEventTime time) const;
   void getLeakagePower(
-    const LibertyCell *cell, 
-    const LibertyCell *corner_cell, 
+    const sta::LibertyCell *cell, 
+    const sta::LibertyCell *corner_cell, 
     const NPinVal n_pin,
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
     // Return values.
@@ -212,101 +217,101 @@ protected:
     bool& default_leakage_exists
   ) const;
   NToggleVal getGlitchScalingRatioClockCycleBasedH(
-    NEeventVal cur_event_idx, const Pin* pin,
+    NEeventVal cur_event_idx, const sta::Pin* pin,
     NEeventVal n_event, const VcdValue* vcd_values,
     const std::vector<bool>& event_glitch_flag,
-    const Corner *corner
+    const sta::Corner *corner
   );
   void findInputInternalVal(
-    const LibertyCell* corner_cell,
+    const sta::LibertyCell* corner_cell,
     const std::vector<VcdEventVal>& pin_states,
-    const Pin* toggle_pin,
+    const sta::Pin* toggle_pin,
     RISEFALL rise_fall,
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
-    const Corner *corner,
-    const DcalcAnalysisPt* dcalc_ap,
+    const sta::Corner *corner,
+    const sta::DcalcAnalysisPt* dcalc_ap,
     // Return values.
     EnergyVal* internal_energy
   );
   void findOutputInternalVal(
-    const Instance *inst,
-    const LibertyCell* corner_cell,
+    const sta::Instance *inst,
+    const sta::LibertyCell* corner_cell,
     const std::vector<VcdEventVal>& pin_states,
     VcdEventTime cur_time,
-    const Pin* toggle_pin,
+    const sta::Pin* toggle_pin,
     RISEFALL to_rf,
     NPinVal n_input_pin,
-    const std::vector<const Pin *>& pins,
+    const std::vector<const sta::Pin *>& pins,
     const std::vector<PwrActivity>& pin_activities,
     const std::unordered_map<std::string, NPinVal>& port_name_to_idx_map,
-    const Corner *corner,
-    const DcalcAnalysisPt* dcalc_ap,
+    const sta::Corner *corner,
+    const sta::DcalcAnalysisPt* dcalc_ap,
     // Return values.
     EnergyVal* internal_energy
   );
   void getDefaultOutputPinInternalEnergyVal(
-    const Instance *inst,
-    const std::vector<const Pin *>& pins,
-    const Pin* toggle_pin,
+    const sta::Instance *inst,
+    const std::vector<const sta::Pin *>& pins,
+    const sta::Pin* toggle_pin,
     RISEFALL to_rf,
     NPinVal n_input_pin,
-    const InternalPowerSeq& internal_pwrs,
-    const Corner *corner,
-    const DcalcAnalysisPt* dcalc_ap,
+    const sta::InternalPowerSeq& internal_pwrs,
+    const sta::Corner *corner,
+    const sta::DcalcAnalysisPt* dcalc_ap,
     // Return values.
     EnergyVal* internal_energy
   );
   // -----------------------end of time based power analysis---------------------------
-  float getSlew(Vertex *vertex,
-                const RiseFall *rf,
-                const Corner *corner);
-  const Clock *findInstClk(const Instance *inst);
-  const Clock *findClk(const Pin *to_pin);
-  float clockDuty(const Clock *clk);
-  PwrActivity findClkedActivity(const Pin *pin,
-                                const Clock *inst_clk);
-  PwrActivity findActivity(const Pin *pin);
-  PwrActivity findSeqActivity(const Instance *inst,
-                              LibertyPort *port);
-  float portVoltage(const LibertyCell *cell,
-                    const LibertyPort *port,
-                    const DcalcAnalysisPt *dcalc_ap) const;
-  float pgNameVoltage(const LibertyCell *cell,
+  float getSlew(sta::Vertex *vertex,
+                const sta::RiseFall *rf,
+                const sta::Corner *corner);
+  const sta::Clock *findInstClk(const sta::Instance *inst);
+  const sta::Clock *findClk(const sta::Pin *to_pin);
+  float clockDuty(const sta::Clock *clk);
+  PwrActivity findClkedActivity(const sta::Pin *pin,
+                                const sta::Clock *inst_clk);
+  PwrActivity findActivity(const sta::Pin *pin);
+  PwrActivity findSeqActivity(const sta::Instance *inst,
+                              sta::LibertyPort *port);
+  float portVoltage(const sta::LibertyCell *cell,
+                    const sta::LibertyPort *port,
+                    const sta::DcalcAnalysisPt *dcalc_ap) const;
+  float pgNameVoltage(const sta::LibertyCell *cell,
                       const char *pg_port_name,
-                      const DcalcAnalysisPt *dcalc_ap) const;
-  void seedActivities(BfsFwdIterator &bfs);
-  void seedRegOutputActivities(const Instance *reg,
-                               Sequential *seq,
-                               LibertyPort *output,
+                      const sta::DcalcAnalysisPt *dcalc_ap) const;
+  void seedActivities(sta::BfsFwdIterator &bfs);
+  void seedRegOutputActivities(const sta::Instance *reg,
+                               sta::Sequential *seq,
+                               sta::LibertyPort *output,
                                bool invert);
-  void seedRegOutputActivities(const Instance *inst,
-                               BfsFwdIterator &bfs);
-  PwrActivity evalActivity(FuncExpr *expr,
-                           const Instance *inst);
-  PwrActivity evalActivity(FuncExpr *expr,
-                           const Instance *inst,
-                           const LibertyPort *cofactor_port,
+  void seedRegOutputActivities(const sta::Instance *inst,
+                               sta::BfsFwdIterator &bfs);
+  PwrActivity evalActivity(sta::FuncExpr *expr,
+                           const sta::Instance *inst);
+  PwrActivity evalActivity(sta::FuncExpr *expr,
+                           const sta::Instance *inst,
+                           const sta::LibertyPort *cofactor_port,
                            bool cofactor_positive);
-  LibertyPort *findExprOutPort(FuncExpr *expr);
-  float findInputDuty(const Instance *inst,
-                      FuncExpr *func,
-                      InternalPower *pwr);
-  float evalDiffDuty(FuncExpr *expr,
-                     LibertyPort *from_port,
-                     const Instance *inst);
-  LibertyPort *findLinkPort(const LibertyCell *cell,
-                            const LibertyPort *corner_port);
-  Pin *findLinkPin(const Instance *inst,
-                   const LibertyPort *corner_port);
-  void clockGatePins(const Instance *inst,
+  sta::LibertyPort *findExprOutPort(sta::FuncExpr *expr);
+  float findInputDuty(const sta::Instance *inst,
+                      sta::FuncExpr *func,
+                      sta::InternalPower *pwr);
+  float evalDiffDuty(sta::FuncExpr *expr,
+                     sta::LibertyPort *from_port,
+                     const sta::Instance *inst);
+  sta::LibertyPort *findLinkPort(const sta::LibertyCell *cell,
+                            const sta::LibertyPort *corner_port);
+  sta::Pin *findLinkPin(const sta::Instance *inst,
+                   const sta::LibertyPort *corner_port);
+  void clockGatePins(const sta::Instance *inst,
                      // Return values.
-                     const Pin *&enable,
-                     const Pin *&clk,
-                     const Pin *&gclk) const;
+                     const sta::Pin *&enable,
+                     const sta::Pin *&clk,
+                     const sta::Pin *&gclk) const;
   float evalBddActivity(DdNode *bdd,
-                        const Instance *inst);
+                        const sta::Instance *inst);
   float evalBddDuty(DdNode *bdd,
-                    const Instance *inst);
+                    const sta::Instance *inst);
 
 private:
   // Port/pin activities set by set_pin_activity.
@@ -320,12 +325,12 @@ private:
   PwrActivityMap activity_map_;
   PwrSeqActivityMap seq_activity_map_;
   bool activities_valid_;
-  Bdd bdd_;
-  std::vector<std::pair<const Instance*, PowerResult>> cell_power_results_;
+  sta::Bdd bdd_;
+  std::vector<std::pair<const sta::Instance*, PowerResult>> cell_power_results_;
 
   static constexpr int max_activity_passes_ = 100;
 
   friend class PropActivityVisitor;
 };
 
-}  // namespace sta
+}  // namespace gtpower

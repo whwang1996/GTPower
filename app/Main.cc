@@ -74,7 +74,7 @@ main(int argc,
     return 0;
   }
   else if (argc == 2 && stringEq(argv[1], "-version")) {
-    printf("%s\n", STA_VERSION);
+    printf("GTPower (based on OpenSTA %s)\n", STA_VERSION);
     return 0;
   }
   else {
@@ -122,10 +122,21 @@ staTclAppInit(int argc,
     printf("Failed to load tclreadline.tcl\n");
 #endif
 
-  initStaApp(argc, argv, interp);
+  // Preserve the original arguments for PrintArguments.
+  bool show_splash = true;
+  for (int i = 1; i < argc; i++) {
+    if (stringEq(argv[i], "-no_splash")) {
+      show_splash = false;
+      break;
+    }
+  }
+  if (show_splash) {
+    printf("%s\n", sta::splashMessage());
+    fflush(stdout);
+  }
 
-  if (!findCmdLineFlag(argc, argv, "-no_splash"))
-    Tcl_Eval(interp, "sta::show_splash");
+  initStaApp(argc, argv, interp);
+  findCmdLineFlag(argc, argv, "-no_splash");
 
   if (!findCmdLineFlag(argc, argv, "-no_init")) {
     const char *home = getenv("HOME");
@@ -194,12 +205,49 @@ static void
 showUsage(const char *prog,
 	  const char *init_filename)
 {
-  printf("Usage: %s [-help] [-version] [-no_init] [-exit] cmd_file\n", prog);
+  printf("Usage: %s [options] [cmd_file]\n", prog);
+  printf("\nGeneral options:\n");
   printf("  -help              show help and exit\n");
   printf("  -version           show version and exit\n");
   printf("  -no_init           do not read %s init file\n", init_filename);
-  printf("  -threads count|max use count threads\n");
+  printf("  -threads count|max OpenSTA timing-analysis threads (default: 1)\n");
   printf("  -no_splash         do not show the license splash at startup\n");
   printf("  -exit              exit after reading cmd_file\n");
   printf("  cmd_file           source cmd_file\n");
+  printf("\nPower analysis options (CUDA enabled by default):\n"
+         "  -disable_cuda_power_analysis\n"
+         "      run the multi-threaded CPU implementation\n"
+         "  -multi_thread_number <N>\n"
+         "      CPU worker threads for power analysis and FSDB reading (default: 16)\n"
+         "  -result_dir <path>\n"
+         "      result directory (default: ./res)\n"
+         "  -max_event_num <N>\n"
+         "      event budget per batch and CUDA event buffer capacity (default: 400000000)\n"
+         "  -bsim_pin_threshold <N>\n"
+         "      pin-count threshold for state-indexed power lookup (default: 16)\n");
+  printf("\nCUDA options:\n"
+         "  -cuda_device_id <id>\n"
+         "      CUDA device for power analysis (default: last visible GPU)\n"
+         "  -cuda_thread_partition_basis cycle|event\n"
+         "      workload-partitioning strategy (default: cycle)\n"
+         "  -n_cycle_per_thread <N>\n"
+         "      static cycles per CUDA thread (default: 8); requires\n"
+         "      -disable_n_cycle_auto_selection in CUDA mode\n"
+         "  -n_event_per_thread_for_all_pins <N>\n"
+         "      event-based thread-work configuration (default: 32)\n"
+         "  -disable_n_cycle_auto_selection\n"
+         "      disable event-density-aware cycle selection\n"
+         "  -n_cycle_auto_selection_e_target <N>\n"
+         "      target event count for automatic cycle selection (default: 8)\n"
+         "  -n_cycle_auto_selection_parallelism_floor <N>\n"
+         "      minimum parallelism target for sparse workloads (default: 512)\n"
+         "  -disable_fusion\n"
+         "      use separate dynamic and leakage CUDA kernels\n");
+  printf("\nReporting options:\n"
+         "  -report_circuit_stat\n"
+         "      report circuit and gate statistics\n"
+         "  -report_vcd_stat\n"
+         "      report switching-activity statistics\n"
+         "  -report_cuda_power_thread_alloc_stat\n"
+         "      report CUDA thread-allocation statistics\n");
 }

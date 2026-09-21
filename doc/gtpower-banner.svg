@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" role="img" aria-labelledby="title description">
+  <title id="title">GTPower — GPU-Accelerated Gate-Level Time-Based Power Analysis</title>
+  <desc id="description">GTPower on a light background, with a GPU compute grid connected to a stylized power waveform.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="0.6" stop-color="#f3f8fc"/>
+      <stop offset="1" stop-color="#edf8f6"/>
+    </linearGradient>
+    <linearGradient id="wave-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d9488" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#0d9488" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="258" rx="18" fill="url(#background)" stroke="#dce6ee"/>
+  <path d="M58 57H100" stroke="#0d9488" stroke-width="4" stroke-linecap="round"/>
+  <text x="56" y="135" fill="#15324f" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-2.5">GTPower</text>
+  <text x="59" y="178" fill="#48627a" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20">GPU-Accelerated Gate-Level Time-Based Power Analysis</text>
+  <path d="M744 57V203" stroke="#dce6ee"/>
+
+  <g stroke="#9bb7c9" stroke-width="2" stroke-linecap="round">
+    <path d="M822 59V70M845 59V70M868 59V70M891 59V70"/>
+    <path d="M822 190V201M845 190V201M868 190V201M891 190V201"/>
+    <path d="M783 93H794M783 117H794M783 141H794M783 165H794"/>
+    <path d="M912 93H923M912 117H923M912 141H923M912 165H923"/>
+  </g>
+  <rect x="794" y="70" width="118" height="120" rx="13" fill="#ffffff" stroke="#9bb7c9" stroke-width="2"/>
+  <g fill="#d6e5ef">
+    <rect x="810" y="88" width="16" height="16" rx="3"/>
+    <rect x="832" y="88" width="16" height="16" rx="3"/>
+    <rect x="854" y="88" width="16" height="16" rx="3"/>
+    <rect x="876" y="88" width="16" height="16" rx="3"/>
+    <rect x="810" y="110" width="16" height="16" rx="3"/>
+    <rect x="876" y="110" width="16" height="16" rx="3"/>
+    <rect x="810" y="132" width="16" height="16" rx="3"/>
+    <rect x="876" y="132" width="16" height="16" rx="3"/>
+    <rect x="810" y="154" width="16" height="16" rx="3"/>
+    <rect x="832" y="154" width="16" height="16" rx="3"/>
+    <rect x="854" y="154" width="16" height="16" rx="3"/>
+    <rect x="876" y="154" width="16" height="16" rx="3"/>
+  </g>
+  <g fill="#0d9488">
+    <rect x="832" y="110" width="16" height="16" rx="3" opacity="0.55"/>
+    <rect x="854" y="110" width="16" height="16" rx="3" opacity="0.8"/>
+    <rect x="832" y="132" width="16" height="16" rx="3" opacity="0.8"/>
+    <rect x="854" y="132" width="16" height="16" rx="3"/>
+  </g>
+  <path d="M920 130H941M936 125L941 130L936 135" fill="none" stroke="#7ca5ad" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M952 94H1150M952 126H1150M952 158H1150M952 190H1150" fill="none" stroke="#d8e9e7"/>
+  <path d="M952 164H970L975 150L980 164H990V122H1010V164H1022L1027 100L1032 164H1042V140H1063V164H1078L1086 120L1094 164H1110V88H1130V164H1150V190H952Z" fill="url(#wave-fill)"/>
+  <path d="M952 164H970L975 150L980 164H990V122H1010V164H1022L1027 100L1032 164H1042V140H1063V164H1078L1086 120L1094 164H1110V88H1130V164H1150" fill="none" stroke="#0d9488" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,8 +1,8 @@
-# GTPower
-
-### GPU-Accelerated Gate-Level Time-Based Power Analysis
+![GTPower — GPU-Accelerated Gate-Level Time-Based Power Analysis](doc/gtpower-banner.svg)
 
 **GTPower** is an open-source GPU-accelerated gate-level time-based power analysis tool built on top of [OpenSTA](https://github.com/parallaxsw/OpenSTA).
+
+OpenSTA provides averaged power analysis. GTPower adds a time-based power analysis mode that reports glitch power and generates per-cycle power waveforms.
 
 This repository provides the source code for the following paper:
 
@@ -93,13 +93,13 @@ cmake --build build --parallel
 The resulting executable is generated at:
 
 ```text
-app/sta
+app/gtpower
 ```
 
 Check the executable version with:
 
 ```bash
-./app/sta -version
+./app/gtpower -version
 ```
 
 ## Quick Start
@@ -107,7 +107,7 @@ Check the executable version with:
 A small VCD-based GCD example is provided under:
 
 ```text
-test/OpenSTA-sample/
+test/gcd/
 ```
 
 The example includes its Liberty library, gate-level netlist, SDC constraints, SPEF parasitics, and VCD waveform. FSDB support is not required.
@@ -119,11 +119,11 @@ Create the result directory first so the shell can open `run.log` for redirected
 ### Running the CUDA Implementation
 
 ```bash
-mkdir -p test/OpenSTA-sample/res
+mkdir -p test/gcd/res
 
-cd test/OpenSTA-sample
+cd test/gcd
 
-../../app/sta \
+../../app/gtpower \
   -exit \
   ./power_vcd.tcl \
   > ./res/run.log 2>&1
@@ -136,11 +136,11 @@ View `res/run.log` in the example directory for runtime messages and aggregate p
 Enable the multi-threaded CPU reference implementation with `-disable_cuda_power_analysis`. Starting from the repository root:
 
 ```bash
-mkdir -p test/OpenSTA-sample/res-cpu
+mkdir -p test/gcd/res-cpu
 
-cd test/OpenSTA-sample
+cd test/gcd
 
-../../app/sta \
+../../app/gtpower \
   -exit \
   -result_dir ./res-cpu \
   -disable_cuda_power_analysis \
@@ -267,7 +267,7 @@ GTPower/
 │   ├── FsdbReader.cc
 │   └── cuda/               # CUDA power-analysis kernels
 ├── util/cuda/              # Shared CUDA utilities
-├── test/OpenSTA-sample/    # Small VCD-based example
+├── test/gcd/               # Small VCD-based example
 ├── examples/               # OpenSTA examples
 └── CMakeLists.txt
 ```

@@ -7,8 +7,8 @@
 #include "Types.hh"
 #include "Types.cuh"
 
-namespace sta {
-namespace power {
+namespace gtpower {
+namespace cuda {
 
 // Forward declaration. The .cc will include the real Gate header.
 struct Gate;
@@ -51,7 +51,7 @@ struct ThreadAllocSummary {
 
 // Collect cycle-partition thread allocation statistics for one interval.
 ThreadAllocSummary collect_cycle_partition_thread_alloc_stats(
-  const std::vector<sta::power::Gate*>& gates,
+  const std::vector<gtpower::cuda::Gate*>& gates,
   VcdEventTime interval_start_time,
   VcdEventTime interval_end_time,
   VcdEventTime vcd_time_unit_per_cycle,
@@ -72,5 +72,5 @@ void logThreadAllocSummaryRound(
   const VcdEventTime interval_end_time
 );
 
-}  // namespace power
-}  // namespace sta
+}  // namespace cuda
+}  // namespace gtpower

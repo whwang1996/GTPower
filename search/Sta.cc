@@ -502,9 +502,9 @@ void
 Sta::makePower()
 {
   if (G_CONFIG.flags.enable_cuda_power_analysis) {
-    power_ = new CudaPower(this);
+    power_ = new gtpower::CudaPower(this);
   } else {
-    power_ = new Power(this);
+    power_ = new gtpower::Power(this);
   }
 }
 
@@ -5476,7 +5476,7 @@ Sta::powerPreamble()
 }
 
 void
-Sta::printPowerAnalysisRes(const PowerResult &result) const
+Sta::printPowerAnalysisRes(const gtpower::PowerResult &result) const
 {
   utils::ScopedTimer print_power_result_timer("Print Power Result");
   TIMERSTART(PRINT_POWER_RES);
@@ -5505,15 +5505,15 @@ Sta::printPowerAnalysisRes(const PowerResult &result) const
 void
 Sta::power(const Corner *corner,
            // Return values.
-           PowerResult &total,
-           PowerResult &sequential,
-           PowerResult &combinational,
-           PowerResult &clock,
-           PowerResult &macro,
-           PowerResult &pad)
+           gtpower::PowerResult &total,
+           gtpower::PowerResult &sequential,
+           gtpower::PowerResult &combinational,
+           gtpower::PowerResult &clock,
+           gtpower::PowerResult &macro,
+           gtpower::PowerResult &pad)
 {
-  utils::ScopedTimer sta_power_timer("Sta::power");
-  TIMERSTART(STA_POWER);
+  utils::ScopedTimer sta_power_timer("GTPower::power");
+  TIMERSTART(GTPOWER_POWER);
   powerPreamble();
   if (G_CONFIG.flags.report_circuit_stat) {
     power_->getCircuitStat();
@@ -5522,13 +5522,13 @@ Sta::power(const Corner *corner,
   printPowerAnalysisRes(total);
 
   sta_power_timer.EndTiming();
-  TIMEREND(STA_POWER);
-  DURATION_ms(STA_POWER);
+  TIMEREND(GTPOWER_POWER);
+  DURATION_ms(GTPOWER_POWER);
 
   utils::GlobalTimeStats::instance().Print();
 }
 
-PowerResult
+gtpower::PowerResult
 Sta::power(const Instance *inst,
            const Corner *corner)
 {
@@ -5536,7 +5536,7 @@ Sta::power(const Instance *inst,
   return power_->power(inst, corner);
 }
 
-PwrActivity
+gtpower::PwrActivity
 Sta::findClkedActivity(const Pin *pin)
 {
   powerPreamble();

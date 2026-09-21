@@ -20,9 +20,13 @@ namespace sta {
 
 class Sta;
 
+}  // namespace sta
+
+namespace gtpower {
+
 void
 readVcdActivities(const char *filename,
                   const char *scope,
-                  Sta *sta);
+                  sta::Sta *sta);
 
-}  // namespace sta
+}  // namespace gtpower

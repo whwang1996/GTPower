@@ -20,7 +20,9 @@
 
 #include "Report.hh"
 
-namespace sta {
+namespace gtpower {
+
+using namespace sta;
 
 Vcd::Vcd(StaState *sta) :
   StaState(sta),
@@ -67,7 +69,7 @@ Vcd::operator=(Vcd &&vcd1)
   max_var_name_length_ = vcd1.max_var_name_length_;
   max_var_width_ = vcd1.max_var_width_;
   // id_values_map_ = vcd1.id_values_map_;
-  std::unordered_map<std::string, sta::VcdValues>::iterator iter;
+  std::unordered_map<std::string, gtpower::VcdValues>::iterator iter;
   for (iter = vcd1.id_values_map_.begin(); iter != vcd1.id_values_map_.end(); ++iter) {
     id_values_map_[iter->first] = std::move(vcd1.id_values_map_[iter->first]);
   }
@@ -274,4 +276,4 @@ VcdValue::value(int value_bit) const
     return value_;
 }
 
-}  // namespace sta
+}  // namespace gtpower

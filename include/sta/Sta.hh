@@ -1272,19 +1272,19 @@ public:
 				const LibertyCell *to_cell);
 
   // Power API.
-  Power *power() { return power_; }
-  const Power *power() const { return power_; }
+  gtpower::Power *power() { return power_; }
+  const gtpower::Power *power() const { return power_; }
   void power(const Corner *corner,
 	     // Return values.
-	     PowerResult &total,
-	     PowerResult &sequential,
-  	     PowerResult &combinational,
-  	     PowerResult &clock,
-	     PowerResult &macro,
-	     PowerResult &pad);
-  PowerResult power(const Instance *inst,
+	     gtpower::PowerResult &total,
+	     gtpower::PowerResult &sequential,
+  	     gtpower::PowerResult &combinational,
+  	     gtpower::PowerResult &clock,
+	     gtpower::PowerResult &macro,
+	     gtpower::PowerResult &pad);
+  gtpower::PowerResult power(const Instance *inst,
                     const Corner *corner);
-  PwrActivity findClkedActivity(const Pin *pin);
+  gtpower::PwrActivity findClkedActivity(const Pin *pin);
 
   void writeGateSpice(ArcDcalcArgSeq gates,
                       const char *spice_filename,
@@ -1436,7 +1436,7 @@ protected:
   void clkSkewPreamble();
   void setCmdNamespace1(CmdNamespace namespc);
   void setThreadCount1(int thread_count);
-  void printPowerAnalysisRes(const PowerResult &result) const;
+  void printPowerAnalysisRes(const gtpower::PowerResult &result) const;
 
   CmdNamespace cmd_namespace_;
   Instance *current_instance_;
@@ -1450,7 +1450,7 @@ protected:
   CheckMaxSkews *check_max_skews_;
   ClkSkews *clk_skews_;
   ReportPath *report_path_;
-  Power *power_;
+  gtpower::Power *power_;
   Tcl_Interp *tcl_interp_;
   bool update_genclks_;
   EquivCells *equiv_cells_;

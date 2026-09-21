@@ -1,9 +1,10 @@
 #pragma once
 #include "Types.hh"
+#include "CudaUtils.cuh"
 #include "Event.cuh"
 #include "Gate.cuh"
 
-namespace utils::cuda::power {
+namespace gtpower::cuda {
 __device__ __host__ NPeriodVal
 clkedWaveformIdx(VcdEventTime time, EventTimeVal vcd_time_scale, PeriodVal period)
 {
@@ -17,7 +18,7 @@ clkedWaveformIdx(T, T, PeriodVal period) = delete;
 // get the minimum event idx of current pin that the time of it is larger than or equals to time
 // that is similiar to Leetcode problem 34
 __device__ NEeventVal 
-getEventIdxByTime(const sta::power::Event *events, NEeventVal start_pos, NEeventVal end_pos, VcdEventTime time, bool contains_equal=false) {
+getEventIdxByTime(const gtpower::cuda::Event *events, NEeventVal start_pos, NEeventVal end_pos, VcdEventTime time, bool contains_equal=false) {
   NEeventVal left = start_pos, right = end_pos;
   while (left < right) { // [left, right)
     NEeventVal mid = left + (right - left) / 2;  // avoid overflow
@@ -33,7 +34,7 @@ getEventIdxByTime(const sta::power::Event *events, NEeventVal start_pos, NEevent
 }
 
 __device__ NEeventVal 
-getAccuEventCountOfGateByPeriodIdx(const sta::power::Gate* gate, const sta::power::Event *events, NPeriodVal period_idx, const NEeventVal vcd_time_unit_per_cycle)
+getAccuEventCountOfGateByPeriodIdx(const gtpower::cuda::Gate* gate, const gtpower::cuda::Event *events, NPeriodVal period_idx, const NEeventVal vcd_time_unit_per_cycle)
 {
   NEeventVal accu_event_count = 0;
   for (NPinVal pin_idx = 0; pin_idx < gate->n_pin; ++pin_idx) {
@@ -52,7 +53,7 @@ getAccuEventCountOfGateByPeriodIdx(const sta::power::Gate* gate, const sta::powe
 
 // get the minimum time that the accumulated event count to it is larger than or equals to accu_event_count
 __device__ NPeriodVal 
-getCycleIndexByAccuEventCount(const sta::power::Gate* gate, const sta::power::Event *events, NEeventVal accu_event_count, NPeriodVal min_period_idx, NPeriodVal max_period_idx, const NEeventVal vcd_time_unit_per_cycle)
+getCycleIndexByAccuEventCount(const gtpower::cuda::Gate* gate, const gtpower::cuda::Event *events, NEeventVal accu_event_count, NPeriodVal min_period_idx, NPeriodVal max_period_idx, const NEeventVal vcd_time_unit_per_cycle)
 {
   NPeriodVal left = min_period_idx, right = max_period_idx;  // max_time is already an open interval here, just use it
   while (left < right) {  // [left, right)
@@ -158,6 +159,6 @@ getTimeBasedGlitchScalingRatio(EventTimeVal pulse_width, SlewVal sum_slew)
   }
 
   NToggleVal ratio = (pulse_width * 2.0) / sum_slew;
-  return my_min(1.0, ratio * ratio);  // clip to 1
+  return ::utils::cuda::my_min(1.0, ratio * ratio);  // clip to 1
 }
 }
