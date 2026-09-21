@@ -1,12 +1,10 @@
 ![GTPower — GPU-Accelerated Gate-Level Time-Based Power Analysis](doc/gtpower-banner.svg)
 
-**GTPower** is an open-source GPU-accelerated gate-level time-based power analysis tool built on top of [OpenSTA](https://github.com/parallaxsw/OpenSTA).
+**GTPower** is an open-source GPU-accelerated tool for gate-level power analysis, built on [OpenSTA](https://github.com/parallaxsw/OpenSTA). It extends OpenSTA's averaged power analysis with a time-based mode that reports glitch power and generates per-cycle power waveforms.
 
-OpenSTA provides averaged power analysis. GTPower adds a time-based power analysis mode that reports glitch power and generates per-cycle power waveforms.
+This repository contains the implementation described in the following paper:
 
-This repository provides the source code for the following paper:
-
-> **GPU-Accelerated Gate-Level Time-Based Power Analysis via Event-Density-Aware Partitioning and Kernel Fusion**  
+> **[GPU-Accelerated Gate-Level Time-Based Power Analysis via Event-Density-Aware Partitioning and Kernel Fusion](https://doi.org/10.1145/3847118)**  
 > Weihao Wang, Yikang Ouyang, Hongyuan Liu, and Yuzhe Ma  
 > *ACM Transactions on Architecture and Code Optimization (TACO)*
 
@@ -283,7 +281,9 @@ If you use GTPower in your research, please cite:
   author  = {Weihao Wang and Yikang Ouyang and Hongyuan Liu and Yuzhe Ma},
   title   = {{GPU-Accelerated Gate-Level Time-Based Power Analysis via Event-Density-Aware Partitioning and Kernel Fusion}},
   journal = {ACM Transactions on Architecture and Code Optimization},
-  note    = {Accepted for publication}
+  year    = {2026},
+  doi     = {10.1145/3847118},
+  url     = {https://doi.org/10.1145/3847118}
 }
 ```
 
